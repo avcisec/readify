@@ -1,0 +1,31 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies, build output, caches, and coverage
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime data and generated media
+data/
+tmp/
+*.log
+
+# Local competitor runtime/source snapshot; research reports remain tracked.
+/linguacafe/

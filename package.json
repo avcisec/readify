@@ -1,0 +1,40 @@
+{
+  "name": "readify",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "24.11.1",
+    "pnpm": "11.25.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @readify/web dev",
+    "dev:worker": "pnpm --filter @readify/worker dev",
+    "build": "pnpm -r build",
+    "format": "prettier --write 'apps/**/*.{ts,tsx,css,json,mjs}' 'packages/**/*.{ts,tsx,json,mjs}' 'tests/**/*.{ts,tsx}' '.github/**/*.yml' 'package.json' 'pnpm-workspace.yaml' 'eslint.config.mjs' 'playwright.config.ts'",
+    "format:check": "prettier --check 'apps/**/*.{ts,tsx,css,json,mjs}' 'packages/**/*.{ts,tsx,json,mjs}' 'tests/**/*.{ts,tsx}' '.github/**/*.yml' 'package.json' 'pnpm-workspace.yaml' 'eslint.config.mjs' 'playwright.config.ts'",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run packages --exclude '**/*.integration.test.ts'",
+    "test:integration": "bash scripts/run_integration_tests.sh",
+    "test:e2e": "playwright test",
+    "architecture:check": "python3 scripts/check_architecture.py && python3 scripts/verify_repo.py architecture",
+    "migrations:check": "bash scripts/check_migrations.sh",
+    "security:check": "pnpm audit --audit-level high && python3 scripts/verify_repo.py security"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.62.1",
+    "@types/node": "26.4.0",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "4.1.11"
+  }
+}

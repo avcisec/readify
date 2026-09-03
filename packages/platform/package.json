@@ -1,0 +1,30 @@
+{
+  "name": "@readify/platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "migrate": "tsx src/database/migrate-cli.ts up",
+    "migrate:down": "tsx src/database/migrate-cli.ts down",
+    "migrate:initial": "tsx src/database/migrate-cli.ts initial",
+    "migrate:reset": "tsx src/database/migrate-cli.ts reset",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@readify/contracts": "workspace:*",
+    "@readify/modules": "workspace:*",
+    "franc-min": "6.2.0",
+    "kysely": "0.29.5",
+    "pg": "8.23.0",
+    "pino": "10.3.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.13"
+  }
+}
