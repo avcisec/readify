@@ -226,3 +226,19 @@ test("mobile Reader uses a bottom context surface", async ({ page }) => {
     page.getByRole("button", { name: "mange", exact: true }),
   ).toBeFocused();
 });
+
+test("tablet and mobile widths use labeled bottom navigation", async ({
+  page,
+}) => {
+  await signIn(page, `responsive-nav-${test.info().project.name}@example.test`);
+  await page.getByRole("button", { name: "Devam et" }).click();
+
+  for (const width of [1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const navigation = page.locator(".app-sidebar");
+    const box = await navigation.boundingBox();
+    expect(box?.width).toBeCloseTo(width, 0);
+    expect(box?.y).toBeGreaterThan(700);
+    await expect(page.getByRole("link", { name: "Kütüphane" })).toBeVisible();
+  }
+});

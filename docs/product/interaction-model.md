@@ -12,14 +12,14 @@ This document owns cross-screen interaction behavior for the declared MVP. It re
 
 ## Where actions live
 
-| Interaction form | MVP use |
-| --- | --- |
-| One-click/tap | play/pause, ±5 seconds, repeat sentence, Learning/Known/Ignore, Add card, Undo, Continue, answer rating |
-| Inline | validation, save status, processing progress, sync quality/state, recoverable error, section progress |
-| Contextual surface | word/expression meaning, source sentence, pronunciation, current state, translation provenance, grammar details |
-| Side panel / drawer / bottom sheet | the contextual surface: side panel on desktop, drawer on tablet, bottom sheet on mobile |
-| Modal dialog | destructive deletion and `.apkg` export confirmation |
-| Separate screen | Import, Vocabulary management, focused Review, Progress, Profile/Settings |
+| Interaction form                   | MVP use                                                                                                         |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| One-click/tap                      | play/pause, ±5 seconds, repeat sentence, Learning/Known/Ignore, Add card, Undo, Continue, answer rating         |
+| Inline                             | validation, save status, processing progress, sync quality/state, recoverable error, section progress           |
+| Contextual surface                 | word/expression meaning, source sentence, pronunciation, current state, translation provenance, grammar details |
+| Side panel / drawer / bottom sheet | the contextual surface: side panel on desktop, drawer on tablet, bottom sheet on mobile                         |
+| Modal dialog                       | destructive deletion and `.apkg` export confirmation                                                            |
+| Separate screen                    | Import, Vocabulary management, focused Review, Progress, Profile/Settings                                       |
 
 Do not use a modal for ordinary word lookup, import progress, provider failure, or Reader settings.
 
@@ -86,12 +86,12 @@ State saves optimistically only when the UI can show pending state. Failure rest
 
 Use only the state model already defined by product truth:
 
-| State | Meaning | Reader treatment |
-| --- | --- | --- |
-| New / unclassified | no explicit learner decision yet | subtle distinguishable token treatment; explicit `New` label in context surface |
-| Learning | learner chose to study it | persistent emphasis distinguishable without color alone |
-| Known | reversible self-report at lemma level | neutral text; context surface/accessible name states Known |
-| Ignored | excluded noise/proper name | neutral text; context surface states Ignored |
+| State              | Meaning                               | Reader treatment                                                                |
+| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------- |
+| New / unclassified | no explicit learner decision yet      | subtle distinguishable token treatment; explicit `New` label in context surface |
+| Learning           | learner chose to study it             | persistent emphasis distinguishable without color alone                         |
+| Known              | reversible self-report at lemma level | neutral text; context surface/accessible name states Known                      |
+| Ignored            | excluded noise/proper name            | neutral text; context surface states Ignored                                    |
 
 “Unseen” is an exposure/analytics fact, not another vocabulary state or permanent visual style. Recall Confirmed is a derived learning result shown in Vocabulary/Progress, not a Reader editing state. Every state uses text plus icon/underline/pattern where displayed; color is supplementary.
 
@@ -169,16 +169,16 @@ Daily Learning Score, goal, streak, heatmap, periods, totals/change, assistance,
 
 ## Responsive structure
 
-| Surface | Desktop | Tablet | Mobile |
-| --- | --- | --- | --- |
-| App shell | persistent side/top navigation | compact navigation | bottom navigation; account in header/menu |
-| Library | Continue + multi-column/list cards | reduced columns | stacked cards; full-width Import CTA |
-| Import | centered step form | same flow | single column; native file picker; no drag-only dependency |
-| Reader content | centered text + non-overlap side panel | text + overlay/collapsible drawer | full-width text; bottom sheet; Reader-specific header |
-| Player | full compact bar | compact bar | fixed compact bar above bottom edge; expanded controls on demand |
-| Vocabulary | table/list with source snippet | reduced columns | cards/accordion; filters in drawer |
-| Review | centered focused card | same | full-width card; large answer targets |
-| Progress | grouped cards/charts | two/one columns | stacked groups; tables become labeled cards |
+| Surface        | Desktop                                | Tablet                            | Mobile                                                           |
+| -------------- | -------------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| App shell      | persistent side navigation             | labeled bottom navigation         | labeled bottom navigation; account in header/menu                |
+| Library        | Continue + multi-column/list cards     | reduced columns                   | stacked cards; full-width Import CTA                             |
+| Import         | centered step form                     | same flow                         | single column; native file picker; no drag-only dependency       |
+| Reader content | centered text + non-overlap side panel | text + overlay/collapsible drawer | full-width text; bottom sheet; Reader-specific header            |
+| Player         | full compact bar                       | compact bar                       | fixed compact bar above bottom edge; expanded controls on demand |
+| Vocabulary     | table/list with source snippet         | reduced columns                   | cards/accordion; filters in drawer                               |
+| Review         | centered focused card                  | same                              | full-width card; large answer targets                            |
+| Progress       | grouped cards/charts                   | two/one columns                   | stacked groups; tables become labeled cards                      |
 
 Opening the mobile bottom sheet must not hide the selected sentence behind both sheet and player; it has collapsed/half/full states and can be dismissed with Back/Escape or a labeled control.
 

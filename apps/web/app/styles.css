@@ -952,36 +952,8 @@ textarea {
 
 @media (max-width: 64rem) {
   :root {
-    --sidebar-width: 5.25rem;
+    --sidebar-width: 0rem;
   }
-  .app-sidebar {
-    align-items: center;
-    padding-inline: 0.65rem;
-  }
-  .brand {
-    padding: 0;
-  }
-  .brand > span:last-child,
-  .nav-item > span,
-  .language-chip span:last-child {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .nav-item {
-    justify-content: center;
-    padding-inline: 0;
-  }
-  .language-chip {
-    justify-content: center;
-    padding-inline: 0;
-  }
-}
-
-@media (max-width: 48rem) {
   html {
     scroll-padding-bottom: 5rem;
   }
@@ -1017,21 +989,27 @@ textarea {
   .nav-item {
     min-height: 3.5rem;
     flex-direction: column;
+    justify-content: center;
     gap: 0.1rem;
     padding: 0.3rem;
     font-size: 0.68rem;
-  }
-  .nav-item > span {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
   }
   .nav-item svg {
     width: 1.2rem;
     height: 1.2rem;
   }
+  .app-main,
+  .app-sidebar + main {
+    width: min(100% - 2rem, 78rem);
+    margin: 0 auto;
+    padding: 2rem 0 6rem;
+  }
+  .reader-header {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 48rem) {
   .app-main,
   .app-sidebar + main {
     width: min(100% - 1rem, 78rem);
