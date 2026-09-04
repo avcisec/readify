@@ -9,7 +9,8 @@ export interface RequestContext {
   readonly accountId?: string;
 }
 
-export type VocabularyState = "learning" | "known" | "ignored";
+export type VocabularyState =
+  "new" | "recognized" | "familiar" | "learned" | "known" | "ignored";
 export type ProcessingCapability = "pending" | "ready" | "failed";
 
 export interface ProblemDetails {

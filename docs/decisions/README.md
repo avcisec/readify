@@ -8,5 +8,6 @@ ADRs record decisions that are costly to reverse or constrain future work. Statu
 - [ADR-0004: Simplest atomic durable handoff](0004-atomic-durable-handoff.md) — Accepted; amends ADR-0003 publication mechanism
 - [ADR-0005: Versioned JSON HTTP contracts](0005-versioned-json-http-contracts.md) — Accepted
 - [ADR-0006: Kysely with SQL-first migrations](0006-kysely-and-sql-first-migrations.md) — Accepted
+- [ADR-0007: Explicit vocabulary learning stages](0007-explicit-vocabulary-learning-stages.md) — Accepted
 
 New ADRs should state context, choice, reasons, alternatives, tradeoffs, migration difficulty, and consequences.

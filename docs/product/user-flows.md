@@ -21,7 +21,7 @@ authenticate/onboard
 → import private content or resume an item
 → read and/or listen in Reader
 → inspect an unknown word/expression in context
-→ explicitly set Learning/Known/Ignored or add a card
+→ explicitly set stage 1–4/Known/Ignored or add a card
 → continue without leaving Reader
 → later review due cards
 → return to the source or Library
@@ -100,7 +100,7 @@ open/continue item
 → select word or expression
 → contextual surface opens without navigating away
 → lookup loading → contextual result/failure
-→ optional one-click Learning / Known / Ignore / Add card
+→ optional one-click 1–4 / Known / Ignore / Add card
 → mutation saved; Undo remains available
 → dismiss/continue reading
 ```

@@ -52,7 +52,7 @@ Desktop uses a non-overlapping side panel. Tablet uses a collapsible overlay dra
 
 - **Purpose / goal:** find and manage explicitly encountered words/expressions.
 - **Entry:** primary navigation, Reader contextual surface, Review summary.
-- **Actions / information:** search; filter by Learning/Known/Ignored, word/expression, and source; meaning/source snippet; occurrence count; due state; change state; Study again; open source; select/export to `.apkg`.
+- **Actions / information:** search; filter by stages 1–4/Known/Ignored, word/expression, and source; meaning/source snippet; occurrence count; due state; change state; Study again; open source; select/export to `.apkg`.
 - **Empty:** explain that items are created explicitly in Reader and link to Library. **Loading:** list skeleton retaining filters. **Error:** retry without dropping filters. **Success:** updated row/card and reversible feedback.
 - **Exit:** source Reader, Review, export dialog, primary navigation.
 

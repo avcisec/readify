@@ -44,7 +44,14 @@ export const readerPositionSchema = z
 export const vocabularyChangeSchema = z
   .object({
     occurrenceId: z.string().min(1).max(100),
-    state: z.enum(["learning", "known", "ignored"]),
+    state: z.enum([
+      "new",
+      "recognized",
+      "familiar",
+      "learned",
+      "known",
+      "ignored",
+    ]),
   })
   .strict();
 

@@ -3,7 +3,14 @@ import type { VocabularyState } from "@readify/contracts";
 export function assertVocabularyState(
   value: string,
 ): asserts value is VocabularyState {
-  if (value !== "learning" && value !== "known" && value !== "ignored")
+  if (
+    value !== "new" &&
+    value !== "recognized" &&
+    value !== "familiar" &&
+    value !== "learned" &&
+    value !== "known" &&
+    value !== "ignored"
+  )
     throw new Error("invalid_vocabulary_state");
 }
 

@@ -73,7 +73,7 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
         violation.impact === "critical" || violation.impact === "serious",
     ),
   ).toEqual([]);
-  const learning = page.getByRole("button", { name: "Öğreniyorum" });
+  const newState = page.getByRole("button", { name: "1 · New" });
   await page.route("**/api/v1/vocabulary-state-changes", async (route) => {
     await route.fulfill({
       status: 503,
@@ -87,19 +87,47 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
       }),
     });
   });
-  await learning.click();
-  await expect(learning).toHaveAttribute("aria-pressed", "false");
+  await newState.click();
+  await expect(newState).toHaveAttribute("aria-pressed", "false");
   await page.unroute("**/api/v1/vocabulary-state-changes");
-  await learning.click();
-  await expect(page.getByText("Öğreniyorum olarak kaydedildi.")).toBeAttached();
+  await page.keyboard.press("1");
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("1 · New olarak kaydedildi.")).toBeAttached();
   await page.getByRole("button", { name: "Son değişikliği geri al" }).click();
   await expect(
     page.getByText("Son kelime değişikliği geri alındı."),
   ).toBeAttached();
-  await learning.click();
+  for (const [key, label] of [
+    ["1", "1 · New"],
+    ["2", "2 · Recognised"],
+    ["3", "3 · Familiar"],
+    ["4", "4 · Learned"],
+    ["q", "Ignore · Q"],
+    ["e", "Known · E"],
+    ["1", "1 · New"],
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(page.getByRole("button", { name: label })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  }
+  let duplicateStateRequests = 0;
+  const countStateRequest = (request: { url(): string }) => {
+    if (request.url().includes("/api/v1/vocabulary-state-changes"))
+      duplicateStateRequests += 1;
+  };
+  page.on("request", countStateRequest);
+  await page.keyboard.press("1");
+  await page.waitForTimeout(100);
+  page.off("request", countStateRequest);
+  expect(duplicateStateRequests).toBe(0);
 
   await page.getByRole("link", { name: "Kelimeler" }).click();
   await expect(page.getByText("manger", { exact: true })).toBeVisible();
+  await expect(page.locator(".state-new")).toContainText("1 · New");
+  await page.keyboard.press("2");
+  await expect(page.locator(".state-new")).toContainText("1 · New");
   await expect(page.getByText(/kullanım/u).first()).toBeVisible();
   await page.getByRole("link", { name: "Metinde aç" }).click();
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
@@ -116,7 +144,7 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await page.getByRole("link", { name: "Devam et" }).first().click();
   await expect(
     page.getByRole("button", { name: "mange", exact: true }).first(),
-  ).toHaveClass(/token-learning/u);
+  ).toHaveClass(/token-new/u);
   await expect(page.locator(".reader-paragraph").last()).toBeInViewport();
   await page.getByRole("button", { name: "Nora", exact: true }).first().click();
   await expect(page.getByText(/sınırlı geliştirme sözlüğünde/iu)).toBeVisible();

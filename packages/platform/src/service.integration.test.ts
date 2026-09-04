@@ -158,7 +158,7 @@ describe("first vertical slice", () => {
       service.changeVocabularyState(
         stranger.userId,
         occurrence!.id,
-        "learning",
+        "new",
         "stranger-change",
         "stranger-change-request",
       ),
@@ -176,14 +176,14 @@ describe("first vertical slice", () => {
     const changed = (await service.changeVocabularyState(
       owner.userId,
       occurrence!.id,
-      "learning",
+      "new",
       "vocab-1",
       "req-3",
     )) as {
       vocabularyItem: { id: string; state: string };
       stateChangeId: string;
     };
-    expect(changed.vocabularyItem.state).toBe("learning");
+    expect(changed.vocabularyItem.state).toBe("new");
     const vocabulary = await service.listVocabulary(owner.userId);
     expect(vocabulary.items).toHaveLength(1);
     expect(vocabulary.items[0]).toMatchObject({
@@ -197,9 +197,9 @@ describe("first vertical slice", () => {
       .flatMap((paragraph) => paragraph.occurrences)
       .filter((token) => token.lemmaId === occurrence!.lemmaId);
     expect(repeated.length).toBeGreaterThan(1);
-    expect(
-      repeated.every((token) => token.vocabularyState === "learning"),
-    ).toBe(true);
+    expect(repeated.every((token) => token.vocabularyState === "new")).toBe(
+      true,
+    );
     const parler = reader.paragraphs
       .flatMap((paragraph) => paragraph.occurrences)
       .find((token) => token.surface === "parlaient")!;
@@ -225,10 +225,28 @@ describe("first vertical slice", () => {
     await service.changeVocabularyState(
       owner.userId,
       parler.id,
-      "learning",
+      "recognized",
       "vocab-learning-2",
       "req-learning-2",
     );
+    await service.changeVocabularyState(
+      owner.userId,
+      parler.id,
+      "familiar",
+      "vocab-learning-3",
+      "req-learning-3",
+    );
+    await service.changeVocabularyState(
+      owner.userId,
+      parler.id,
+      "learned",
+      "vocab-learning-4",
+      "req-learning-4",
+    );
+    expect(
+      (await service.getOccurrenceContext(owner.userId, item.id, parler.id))
+        .vocabulary?.state,
+    ).toBe("learned");
     const nora = reader.paragraphs
       .flatMap((paragraph) => paragraph.occurrences)
       .find((token) => token.surface === "Nora");
@@ -326,7 +344,7 @@ describe("first vertical slice", () => {
     const firstChange = (await service.changeVocabularyState(
       owner.userId,
       occurrence.id,
-      "learning",
+      "new",
       "stale-1",
       "req-stale-1",
     )) as { stateChangeId: string };

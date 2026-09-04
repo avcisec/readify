@@ -14,7 +14,7 @@ This document owns cross-screen interaction behavior for the declared MVP. It re
 
 | Interaction form                   | MVP use                                                                                                         |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| One-click/tap                      | play/pause, ±5 seconds, repeat sentence, Learning/Known/Ignore, Add card, Undo, Continue, answer rating         |
+| One-click/tap                      | play/pause, ±5 seconds, repeat sentence, vocabulary stage/Known/Ignore, Add card, Undo, Continue, answer rating |
 | Inline                             | validation, save status, processing progress, sync quality/state, recoverable error, section progress           |
 | Contextual surface                 | word/expression meaning, source sentence, pronunciation, current state, translation provenance, grammar details |
 | Side panel / drawer / bottom sheet | the contextual surface: side panel on desktop, drawer on tablet, bottom sheet on mobile                         |
@@ -62,7 +62,7 @@ click/tap/focus token
 → contextual surface opens with skeleton/loading state
 → show surface form + lemma + current explicit state
 → show one preferred contextual meaning and source/provenance
-→ optional actions: Learning | Known | Ignore | Add card
+→ optional actions: 1 New | 2 Recognised | 3 Familiar | 4 Learned | Known | Ignore
 → optional detail: pronunciation, morphology/POS, grammar in sentence, occurrences
 ```
 
@@ -74,24 +74,29 @@ The learner uses normal text selection, then chooses `Use expression` from a sma
 
 ### Common actions
 
-- **Learning:** creates/updates the vocabulary item explicitly and preserves the occurrence.
+- **1–4 learning stages:** explicitly create/update the vocabulary item from New through Learned and preserve the occurrence. Learned remains self-reported familiarity, not demonstrated recall.
 - **Known:** applies to the lemma and its forms, clearly says `Applies to this lemma`, pauses existing cards, and is reversible.
 - **Ignore:** removes a proper name/noise item from learning treatment without claiming knowledge.
-- **Add card:** explicitly saves the selected word/expression when needed and adds it to review; it does not silently change Learning/Known/Ignored.
+- **Add card:** explicitly saves the selected word/expression when needed and adds it to review; it does not silently change its vocabulary state.
 - **Undo:** appears immediately in the context surface and transient confirmation; undo restores inherited occurrence presentation.
 
 State saves optimistically only when the UI can show pending state. Failure restores the confirmed state and offers Retry; it never leaves an ambiguous half-saved highlight.
 
 ## Vocabulary text states
 
-Use only the state model already defined by product truth:
+The editable vocabulary states are:
 
-| State              | Meaning                               | Reader treatment                                                                |
-| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------- |
-| New / unclassified | no explicit learner decision yet      | subtle distinguishable token treatment; explicit `New` label in context surface |
-| Learning           | learner chose to study it             | persistent emphasis distinguishable without color alone                         |
-| Known              | reversible self-report at lemma level | neutral text; context surface/accessible name states Known                      |
-| Ignored            | excluded noise/proper name            | neutral text; context surface states Ignored                                    |
+| State          | Meaning                                           | Reader treatment                                           |
+| -------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| Unclassified   | lookup only; no explicit learner decision         | subtle token treatment; not stored in Vocabulary           |
+| 1 · New        | explicitly saved as new                           | first-stage persistent emphasis                            |
+| 2 · Recognised | learner recognizes it                             | second-stage persistent emphasis                           |
+| 3 · Familiar   | learner reports strong familiarity                | third-stage persistent emphasis                            |
+| 4 · Learned    | highest learning stage, still not recall evidence | fourth-stage persistent emphasis                           |
+| Known          | reversible self-report at lemma level             | neutral text; context surface/accessible name states Known |
+| Ignored        | excluded noise/proper name                        | neutral text; context surface states Ignored               |
+
+While the context surface is open, `1`–`4` select the matching stage, `Q` selects Ignore, and `E` selects Known. Shortcuts never fire from editable controls or with modifier keys.
 
 “Unseen” is an exposure/analytics fact, not another vocabulary state or permanent visual style. Recall Confirmed is a derived learning result shown in Vocabulary/Progress, not a Reader editing state. Every state uses text plus icon/underline/pattern where displayed; color is supplementary.
 
@@ -190,7 +195,7 @@ Opening the mobile bottom sheet must not hide the selected sentence behind both 
 - Dialogs alone trap focus. Drawers/bottom sheets have headings, labeled close controls, and predictable Escape/Back behavior.
 - Touch targets are at least comfortably tappable and answer/state buttons are not color-only.
 - Text supports browser zoom and resizing, readable line length, sufficient contrast, and no fixed-height clipping.
-- Active sentence/word, Learning/Known/Ignored, errors, and review feedback have non-color cues.
+- Active sentence/word, every vocabulary state, errors, and review feedback have non-color cues.
 - Auto-scroll honors reduced motion; media has semantic control names and exposed time/status.
 
 ## Deferred UX

@@ -38,7 +38,7 @@ These decisions apply to this slice only unless already established by product t
 | Library title           | First non-empty line, whitespace-normalized and safely truncated to 80 Unicode scalar values; fallback `İsimsiz metin` | Supplies a usable card title without adding metadata fields to the first slice.                                                                                  |
 | Reader mode             | Page View only                                                                                                         | Proves the continuous reading loop; Sentence View remains a later MVP slice.                                                                                     |
 | Word help               | One non-AI preferred meaning with visible provenance; acceptance uses the approved fixture adapter                     | Proves the provider-neutral contract and degradation without a production dictionary or sending private text externally.                                         |
-| Vocabulary actions      | Learning, Known, Ignore, Undo                                                                                          | Proves explicit state and lemma propagation. Cards/Review are not in this slice.                                                                                 |
+| Vocabulary actions      | 1 New, 2 Recognised, 3 Familiar, 4 Learned, Known, Ignore, Undo                                                        | Proves explicit state and lemma propagation. Cards/Review are not in this slice.                                                                                 |
 | Progress                | Structural reading position/completion plus explicit vocabulary counts                                                 | Proves persistence and honest separation without inventing exposure/recall evidence.                                                                             |
 | Accessibility           | Keyboard-complete critical flow, named controls, non-color state cues, zoom/reflow, reduced motion                     | Prevents the risky Reader interaction model from becoming inaccessible by construction.                                                                          |
 
@@ -88,7 +88,7 @@ Library shows user-facing stages: `Sırada`, `Metin hazırlanıyor`, `Dil analiz
 - Reader shows Back to Library, generated title, current section, structural position, continuous paragraphs, and explicit `Bölümü tamamla` where a section boundary exists.
 - The first slice does not render an audio player, Sentence View toggle, translation controls, grammar tree, card action, or placeholders for them.
 - Eligible French tokens are selectable by pointer/touch and keyboard interaction.
-- Inline vocabulary state is distinguishable without color alone. New/unclassified is subtle; Learning has persistent emphasis; Known and Ignored are neutral but explicit in the context surface/accessibility state.
+- Inline vocabulary state is distinguishable without color alone. Unclassified is subtle; explicit stages 1–4 have progressively distinct emphasis; Known and Ignored are neutral but explicit in the context surface/accessibility state.
 - Opening Reader or scrolling alone does not mark words Known, create vocabulary, complete a section, or create demonstrated-recall progress.
 - Completing a section changes structural completion only.
 
@@ -102,7 +102,7 @@ Selecting one token opens the standard context surface without navigation:
 
 The surface shows a loading state, surface form, lemma when available, current explicit state, containing source sentence, one preferred POS-qualified meaning, and meaning provenance. The first slice does not claim sentence-aware word-sense disambiguation.
 
-- Learning, Known, and Ignore are explicit one-action changes.
+- Stages 1–4, Known, and Ignore are explicit one-action changes. Lookup alone remains unclassified.
 - Known states that it applies to the lemma and all current forms.
 - A successful change updates every visible occurrence of that lemma and shows Undo.
 - Undo restores the prior confirmed state and every inherited occurrence presentation.
@@ -114,11 +114,11 @@ Phrase selection, pronunciation audio, manual meaning editing, translation, card
 
 ### Vocabulary
 
-- Vocabulary lists items created by explicit Learning/Known/Ignore actions.
+- Vocabulary lists items created by explicit 1–4/Known/Ignore actions.
 - Each item shows surface/lemma, preferred meaning when available, explicit state, first source sentence, occurrence count, and source link.
 - Re-encountering the same lemma adds/reuses occurrences and never creates a duplicate vocabulary item.
 - Opening a source link returns to the exact Reader occurrence when it still exists.
-- Changing Learning/Known/Ignore from Vocabulary uses the same semantics and Undo behavior as Reader.
+- Changing 1–4/Known/Ignore from Vocabulary uses the same semantics and Undo behavior as Reader.
 - The slice does not require search, filters, bulk actions, card intent, due state, Review, or export.
 
 ### Resume and structural progress
@@ -134,7 +134,7 @@ Phrase selection, pronunciation audio, manual meaning editing, translation, card
 Progress exposes only evidence available in this slice:
 
 - **Content progress:** current section/total and explicitly completed sections.
-- **Your learning state:** counts of Learning and self-marked Known; Ignored is available in detail but not framed as learning.
+- **Your learning state:** one aggregate count for stages 1–4 and a separate self-marked Known count; Ignored is available in detail but not framed as learning.
 - **Demonstrated recall:** `Henüz tekrar verisi yok` with no accuracy, mastery, or Recall Confirmed number.
 
 The slice does not show active study time, words exposed, Learning Score, daily goal/streak, heatmap, assistance rate, audio metrics, review metrics, or CEFR. Those remain declared MVP capabilities for later slices and require their own event/policy acceptance.
@@ -194,14 +194,14 @@ Out-of-scope items retain their existing Core/Plus/Later priority. This section 
 10. **Structure and title:** Given pasted text with outer blank lines, CRLF line endings, multiple paragraphs, and a first content line over 80 characters, Reader preserves internal text/paragraph order, reload returns the same normalized revision, and Library uses a safely truncated first-line title.
 11. **No silent learning:** Opening, scrolling, or completing a section creates no vocabulary state, Known state, or demonstrated recall.
 12. **Contextual lookup:** Selecting a token keeps Reader visible and produces loading → result with surface, lemma, source sentence, one meaning, provenance, and explicit state actions.
-13. **Meaning degradation:** Given meaning lookup fails but lemma analysis exists, Learning/Known/Ignore remain usable and Retry affects meaning only.
-14. **Learning state:** Marking a New token Learning updates the context surface, every matching visible lemma occurrence, Vocabulary, and persists after reload.
+13. **Meaning degradation:** Given meaning lookup fails but lemma analysis exists, 1–4/Known/Ignore remain usable and Retry appears only for a retryable meaning failure.
+14. **Learning state:** Lookup alone creates no item; explicitly selecting 1–4 updates the context surface, every matching visible lemma occurrence, Vocabulary, and persists after reload.
 15. **Lemma-wide Known:** Marking one inflected form Known updates all occurrences sharing that lemma, pauses no cards because cards are absent, and does not create Recall Confirmed/progress score.
 16. **Undo:** Immediately undoing a state change restores the prior state across Reader and Vocabulary after reload.
 17. **Idempotent re-encounter:** Selecting the same lemma in another paragraph reuses one vocabulary item and adds an occurrence rather than a duplicate.
 18. **Mutation failure:** Given the state save fails, the UI returns to the last confirmed state and a retry records at most one successful change.
 19. **Resume:** Given the learner leaves at a paragraph anchor and later uses Continue on another viewport size, Reader returns to the same semantic vicinity with confirmed vocabulary state.
-20. **Minimal Progress:** Given one completed section, two Learning lemmas, one Known lemma, and no review system, Progress shows exactly those structural/self-report facts and explicitly reports no recall data.
+20. **Minimal Progress:** Given one completed section, two lemmas across stages 1–4, one Known lemma, and no review system, Progress shows exactly those structural/self-report facts and explicitly reports no recall data.
 21. **Mobile context:** On a supported mobile viewport, selecting a token opens a dismissible bottom sheet without covering the selected sentence and without losing Reader position.
 22. **Keyboard flow:** A keyboard-only learner can sign in, paste or type/edit text, submit, open Reader, enter/leave token navigation, inspect/change state, undo, navigate to Vocabulary/Progress, and resume with visible focus.
 23. **Authorization:** A learner cannot list, open, resume, look up within, or mutate another account's private Library item even if an identifier is guessed.

@@ -128,8 +128,8 @@ Paste is the low-friction first-slice path and stays on one screen. The textarea
 │   et toujours leur donner des explications.    │ Source sentence         │
 │                                               │ …                       │
 │   …                                           │                         │
-│                                               │ [Learning] [Known]      │
-│   PDF page 18                                 │ [Ignore]   [Add card]   │
+│                                               │ [🗑][1][2][3][4][✓]     │
+│   PDF page 18                                 │  Q  learning scale  E   │
 │                                               │                         │
 │                             [Complete section] │ Grammar in sentence ▸   │
 ├───────────────────────────────────────────────┴─────────────────────────┤
@@ -180,7 +180,7 @@ Selecting a word opens the same context surface as Page View; it is omitted abov
 │ ── contextual bottom sheet ─ │
 │ comprennent · comprendre     │
 │ contextual meaning           │
-│ [Learning] [Known] [More ▾]  │
+│ [🗑][1][2][3][4][✓]          │
 ├──────────────────────────────┤
 │ [Play] [-5]  01:12/03:40 [+5]│
 └──────────────────────────────┘

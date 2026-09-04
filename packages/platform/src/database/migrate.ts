@@ -6,12 +6,14 @@ import {
 import { createDatabase } from "./client";
 import { initialMigration } from "./migrations/001_initial";
 import { sliceQueryIndexesMigration } from "./migrations/002_slice_query_indexes";
+import { vocabularyLearningStagesMigration } from "./migrations/003_vocabulary_learning_stages";
 
 const provider: MigrationProvider = {
   async getMigrations() {
     return {
       "001_initial": initialMigration,
       "002_slice_query_indexes": sliceQueryIndexesMigration,
+      "003_vocabulary_learning_stages": vocabularyLearningStagesMigration,
     };
   },
 };

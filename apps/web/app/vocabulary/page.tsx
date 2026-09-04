@@ -11,7 +11,7 @@ type VocabularyItem = {
   lemma: string;
   firstSurface: string;
   partOfSpeech: string;
-  state: "learning" | "known" | "ignored";
+  state: "new" | "recognized" | "familiar" | "learned" | "known" | "ignored";
   firstSentence: string;
   occurrenceCount: number;
   source: { libraryItemId: string; occurrenceId: string };
@@ -31,9 +31,12 @@ type VocabularyItem = {
       };
 };
 const labels = {
-  learning: "Öğreniyorum",
-  known: "Biliyorum",
-  ignored: "Yoksay",
+  new: "1 · New",
+  recognized: "2 · Recognised",
+  familiar: "3 · Familiar",
+  learned: "4 · Learned",
+  known: "Known",
+  ignored: "Ignore",
 };
 
 export default function VocabularyPage() {

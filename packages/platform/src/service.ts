@@ -969,7 +969,16 @@ export class ReadifyService implements SliceApplication {
     idempotencyKey: string,
     correlationId: string,
   ): Promise<VocabularyMutationView> {
-    if (!new Set(["learning", "known", "ignored"]).has(nextState))
+    if (
+      !new Set([
+        "new",
+        "recognized",
+        "familiar",
+        "learned",
+        "known",
+        "ignored",
+      ]).has(nextState)
+    )
       throw new AppError("invalid_vocabulary_state", 422);
     const requestHash = this.hash(JSON.stringify({ occurrenceId, nextState }));
     return this.database.transaction().execute(async (transaction) => {
@@ -1234,7 +1243,7 @@ export class ReadifyService implements SliceApplication {
         states.rows.map((row) => [row.state, Number(row.count)]),
       );
       await sql`insert into progress_summaries (owner_id, completed_sections, learning_count, known_count, ignored_count, computed_at)
-        values (${userId}, ${Number(completed.rows[0]?.count ?? 0)}, ${counts.learning ?? 0}, ${counts.known ?? 0}, ${counts.ignored ?? 0}, ${this.timestamp()})
+        values (${userId}, ${Number(completed.rows[0]?.count ?? 0)}, ${(counts.new ?? 0) + (counts.recognized ?? 0) + (counts.familiar ?? 0) + (counts.learned ?? 0)}, ${counts.known ?? 0}, ${counts.ignored ?? 0}, ${this.timestamp()})
         on conflict (owner_id) do update set completed_sections=excluded.completed_sections, learning_count=excluded.learning_count, known_count=excluded.known_count, ignored_count=excluded.ignored_count, computed_at=excluded.computed_at`.execute(
         transaction,
       );

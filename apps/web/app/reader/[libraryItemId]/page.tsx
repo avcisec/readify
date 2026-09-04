@@ -12,7 +12,8 @@ import {
   turkishProblem,
 } from "../../../lib/api";
 
-type State = "learning" | "known" | "ignored";
+type State =
+  "new" | "recognized" | "familiar" | "learned" | "known" | "ignored";
 type Occurrence = {
   id: string;
   sentenceId: string;
@@ -70,10 +71,19 @@ type PositionAnchor = {
   sentenceId?: string | null;
 };
 const stateLabels = {
-  learning: "Öğreniyorum",
-  known: "Biliyorum",
-  ignored: "Yoksay",
+  new: "1 · New",
+  recognized: "2 · Recognised",
+  familiar: "3 · Familiar",
+  learned: "4 · Learned",
+  known: "Known",
+  ignored: "Ignore",
 };
+const learningStages = [
+  { state: "new", key: "1", number: "1" },
+  { state: "recognized", key: "2", number: "2" },
+  { state: "familiar", key: "3", number: "3" },
+  { state: "learned", key: "4", number: "4" },
+] as const;
 
 export default function ReaderPage() {
   const { libraryItemId } = useParams<{ libraryItemId: string }>();
@@ -82,6 +92,7 @@ export default function ReaderPage() {
   const [context, setContext] = useState<Context>();
   const [message, setMessage] = useState<string>();
   const [lastChange, setLastChange] = useState<string>();
+  const [stateBusy, setStateBusy] = useState(false);
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const activeToken = useRef<HTMLButtonElement | null>(null);
   const trackingReady = useRef(false);
@@ -222,16 +233,43 @@ export default function ReaderPage() {
   }, [flushPosition, queuePosition, reader]);
   useEffect(() => {
     if (!context) return;
+    const currentContext = context;
     function escapeContext(event: globalThis.KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      const returnTarget = activeToken.current;
-      setContext(undefined);
-      setLastChange(undefined);
-      window.setTimeout(() => returnTarget?.focus(), 0);
+      if (event.key === "Escape") {
+        const returnTarget = activeToken.current;
+        setContext(undefined);
+        setLastChange(undefined);
+        window.setTimeout(() => returnTarget?.focus(), 0);
+        return;
+      }
+      const target = event.target;
+      if (
+        stateBusy ||
+        event.repeat ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        (target instanceof HTMLElement &&
+          (target.isContentEditable ||
+            ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)))
+      )
+        return;
+      const shortcutStates: Record<string, State> = {
+        "1": "new",
+        "2": "recognized",
+        "3": "familiar",
+        "4": "learned",
+        q: "ignored",
+        e: "known",
+      };
+      const state = shortcutStates[event.key.toLocaleLowerCase("tr")];
+      if (!state || currentContext.vocabulary?.state === state) return;
+      event.preventDefault();
+      void changeState(state);
     }
     document.addEventListener("keydown", escapeContext);
     return () => document.removeEventListener("keydown", escapeContext);
-  }, [context]);
+  }, [context, stateBusy]);
 
   async function openContext(
     occurrence: Occurrence,
@@ -286,7 +324,8 @@ export default function ReaderPage() {
     window.setTimeout(() => returnTarget?.focus(), 0);
   }
   async function changeState(state: State) {
-    if (!context) return;
+    if (!context || stateBusy || context.vocabulary?.state === state) return;
+    setStateBusy(true);
     try {
       const change = await api<Change>("/api/v1/vocabulary-state-changes", {
         method: "POST",
@@ -303,6 +342,8 @@ export default function ReaderPage() {
           error instanceof Error ? error.message : "request_failed",
         ),
       );
+    } finally {
+      setStateBusy(false);
     }
   }
   async function undo() {
@@ -461,17 +502,43 @@ export default function ReaderPage() {
             </div>
             <fieldset>
               <legend>Kelime durumu</legend>
-              <div className="state-actions">
-                {(["learning", "known", "ignored"] as const).map((state) => (
+              <div className="state-actions" aria-label="Kelime durumu seç">
+                <button
+                  className="state-icon-action"
+                  aria-label="Ignore · Q"
+                  aria-keyshortcuts="Q"
+                  aria-pressed={context.vocabulary?.state === "ignored"}
+                  disabled={stateBusy}
+                  onClick={() => void changeState("ignored")}
+                >
+                  <TrashIcon />
+                </button>
+                {learningStages.map(({ state, key, number }) => (
                   <button
                     key={state}
+                    aria-label={stateLabels[state]}
+                    aria-keyshortcuts={key}
                     aria-pressed={context.vocabulary?.state === state}
+                    disabled={stateBusy}
                     onClick={() => void changeState(state)}
                   >
-                    {stateLabels[state]}
+                    {number}
                   </button>
                 ))}
+                <button
+                  className="state-icon-action state-known-action"
+                  aria-label="Known · E"
+                  aria-keyshortcuts="E"
+                  aria-pressed={context.vocabulary?.state === "known"}
+                  disabled={stateBusy}
+                  onClick={() => void changeState("known")}
+                >
+                  <CheckIcon />
+                </button>
               </div>
+              <p className="state-scale-help">
+                1 New · 2 Recognised · 3 Familiar · 4 Learned
+              </p>
             </fieldset>
             {lastChange ? (
               <button className="secondary" onClick={() => void undo()}>
@@ -485,6 +552,22 @@ export default function ReaderPage() {
         </p>
       </main>
     </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m5 12 4 4L19 6" />
+    </svg>
   );
 }
 

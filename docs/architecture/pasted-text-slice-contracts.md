@@ -356,11 +356,11 @@ State-change request:
 {
   "libraryItemId": "lib_opaque",
   "occurrenceId": "occ_opaque",
-  "desiredState": "learning"
+  "state": "recognized"
 }
 ```
 
-Allowed states are `learning`, `known`, and `ignored`. The server resolves and authorizes the occurrence and lemma; clients cannot supply arbitrary lemma text or owner IDs. State is unique by account + learning language + lemma. Every state therefore projects to all current occurrences of that lemma; `known` remains explicitly self-reported.
+Allowed states are `new`, `recognized`, `familiar`, `learned`, `known`, and `ignored`; null means lookup-only/unclassified and is never submitted. The first four are explicit self-reported learning stages, and `learned` is not demonstrated recall. `known` remains a separate explicit self-report. The server resolves and authorizes the occurrence and lemma; clients cannot supply arbitrary lemma text or owner IDs. State is unique by account + learning language + lemma and projects to all current occurrences. Existing pre-migration `learning` values upgrade to `new`; downgrade collapses the four stages back to `learning` and therefore loses stage specificity.
 
 The committed response includes `stateChangeId`, `vocabularyItemId`, `lemmaId`, confirmed state, state `version`, source occurrence, and whether the action created or updated the item. Meaning availability is not a precondition. Repeating the idempotency key records at most one change.
 
@@ -394,7 +394,7 @@ Progress returns:
 }
 ```
 
-Counts derive only from explicit section-completion and vocabulary-state events. The projection may lag a just-confirmed write; `freshness.updating` is true when known committed events remain unapplied. The UI retains the last confirmed values and labels refresh rather than inventing immediate mastery. No reading time, exposure, recall score, streak, heatmap, or CEFR field exists in this response.
+Counts derive only from explicit section-completion and vocabulary-state events. The Progress `learning` count aggregates `new`, `recognized`, `familiar`, and `learned`; it does not imply recall. The projection may lag a just-confirmed write; `freshness.updating` is true when known committed events remain unapplied. The UI retains the last confirmed values and labels refresh rather than inventing immediate mastery. No reading time, exposure, recall score, streak, heatmap, or CEFR field exists in this response.
 
 ## Internal events and job payloads
 
