@@ -205,7 +205,9 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
   expect(crossOrigin.status()).toBe(403);
 });
 
-test("mobile Reader uses a bottom context surface", async ({ page }) => {
+test("responsive Reader stays within the viewport and adapts context", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const email = `mobile-${test.info().project.name}@example.test`;
   await signIn(page, email);
@@ -221,6 +223,22 @@ test("mobile Reader uses a bottom context surface", async ({ page }) => {
   const panel = page.getByRole("complementary", { name: "Kelime bağlamı" });
   await expect(panel).toBeVisible();
   await expect(panel).toHaveCSS("position", "fixed");
+  for (const width of [1024, 820, 500, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      headerWidth: document
+        .querySelector(".reader-header")!
+        .getBoundingClientRect().width,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+    expect(dimensions.headerWidth).toBeCloseTo(dimensions.clientWidth, 0);
+  }
+  await page.setViewportSize({ width: 820, height: 844 });
+  await expect(panel).toHaveCSS("right", "16px");
+  await page.setViewportSize({ width: 500, height: 844 });
+  await expect(panel).toHaveCSS("bottom", "0px");
   await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "mange", exact: true }),
