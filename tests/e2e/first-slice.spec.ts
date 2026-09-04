@@ -93,12 +93,17 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await page.keyboard.press("1");
   await expect(newState).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("1 · New olarak kaydedildi.")).toBeAttached();
-  await page.getByRole("button", { name: "Son değişikliği geri al" }).click();
+  await expect(page.getByRole("status")).toContainText("1 · New kaydedildi.");
+  await page.getByRole("button", { name: "Geri al" }).click();
   await expect(
     page.getByText("Son kelime değişikliği geri alındı."),
   ).toBeAttached();
+  await expect(newState).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("1");
+  await page.keyboard.press("3");
+  await page.getByRole("button", { name: "Geri al" }).click();
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
   for (const [key, label] of [
-    ["1", "1 · New"],
     ["2", "2 · Recognised"],
     ["3", "3 · Familiar"],
     ["4", "4 · Learned"],

@@ -130,6 +130,7 @@ Paste is the low-friction first-slice path and stays on one screen. The textarea
 │   …                                           │                         │
 │                                               │ [🗑][1][2][3][4][✓]     │
 │   PDF page 18                                 │  Q  learning scale  E   │
+│                                               │ 3 Familiar saved [Undo] │
 │                                               │                         │
 │                             [Complete section] │ Grammar in sentence ▸   │
 ├───────────────────────────────────────────────┴─────────────────────────┤

@@ -541,9 +541,16 @@ export default function ReaderPage() {
               </p>
             </fieldset>
             {lastChange ? (
-              <button className="secondary" onClick={() => void undo()}>
-                Son değişikliği geri al
-              </button>
+              <div className="state-feedback" role="status">
+                <span>
+                  {context.vocabulary
+                    ? `${stateLabels[context.vocabulary.state]} kaydedildi.`
+                    : "Kelime durumu güncellendi."}
+                </span>
+                <button className="secondary" onClick={() => void undo()}>
+                  Geri al
+                </button>
+              </div>
             ) : null}
           </aside>
         ) : null}
