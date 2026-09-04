@@ -270,6 +270,13 @@ export default function ReaderPage() {
     document.addEventListener("keydown", escapeContext);
     return () => document.removeEventListener("keydown", escapeContext);
   }, [context, stateBusy]);
+  useEffect(() => {
+    if (!context) return;
+    const frame = window.requestAnimationFrame(() =>
+      panelHeading.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [context?.occurrence.id]);
 
   async function openContext(
     occurrence: Occurrence,
@@ -290,7 +297,6 @@ export default function ReaderPage() {
         { paragraphId: paragraph.id, sentenceId: occurrence.sentenceId },
         true,
       );
-      window.setTimeout(() => panelHeading.current?.focus(), 0);
     } catch (error) {
       setMessage(
         turkishProblem(

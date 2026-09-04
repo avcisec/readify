@@ -829,6 +829,12 @@ textarea {
   text-decoration: none;
   transform: none;
 }
+button.reader-token:hover:not(:disabled) {
+  color: white;
+  background: var(--brand);
+  box-shadow: inset 0 -2px white;
+  transform: none;
+}
 .reader-token:focus-visible {
   outline: 2px solid white;
   outline-offset: -3px;

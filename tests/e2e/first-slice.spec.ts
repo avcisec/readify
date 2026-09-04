@@ -112,10 +112,9 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
     ["1", "1 · New"],
   ] as const) {
     await page.keyboard.press(key);
-    await expect(page.getByRole("button", { name: label })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    const stateButton = page.getByRole("button", { name: label });
+    await expect(stateButton).toHaveAttribute("aria-pressed", "true");
+    await expect(stateButton).toBeEnabled();
   }
   let duplicateStateRequests = 0;
   const countStateRequest = (request: { url(): string }) => {
