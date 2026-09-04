@@ -54,6 +54,9 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   const mange = page
     .getByRole("button", { name: "mange", exact: true })
     .first();
+  await mange.hover();
+  await expect(mange).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(mange).toHaveCSS("background-color", "rgb(0, 30, 30)");
   await mange.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
