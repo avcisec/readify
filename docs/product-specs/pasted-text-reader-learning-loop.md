@@ -27,20 +27,20 @@ authenticate → paste and submit text → process in background → read
 
 These decisions apply to this slice only unless already established by product truth:
 
-| Decision | Slice choice | Reason |
-| --- | --- | --- |
-| Interface language | Turkish | Matches current product terminology and validation cohort assumption; no language switcher yet. |
-| Authentication behavior | Provider-neutral passwordless email link; deterministic non-production delivery for slice verification | Avoids custom password/recovery behavior while preserving persistent private ownership; a production managed provider is not required to implement the contract. |
-| Learning language | French only | Matches the first quality guarantee; learner still chooses approximate A1–C2 starting level. |
-| Import source | One pasted plain-text submission | Removes file preparation and validates the shortest private intake, async processing, Reader, and persistence loop. |
-| Slice text limit | 50,000 Unicode scalar values after normalization v1 | Concrete implementation/acceptance bound; the final production quota is validated later from measured evidence. |
-| Text normalization | Plain text only; normalize line endings, trim outer blank lines, preserve internal characters and paragraph breaks | Gives deterministic behavior without interpreting rich clipboard formatting or silently rewriting content. |
-| Library title | First non-empty line, whitespace-normalized and safely truncated to 80 Unicode scalar values; fallback `İsimsiz metin` | Supplies a usable card title without adding metadata fields to the first slice. |
-| Reader mode | Page View only | Proves the continuous reading loop; Sentence View remains a later MVP slice. |
-| Word help | One non-AI preferred meaning with visible provenance; acceptance uses the approved fixture adapter | Proves the provider-neutral contract and degradation without a production dictionary or sending private text externally. |
-| Vocabulary actions | Learning, Known, Ignore, Undo | Proves explicit state and lemma propagation. Cards/Review are not in this slice. |
-| Progress | Structural reading position/completion plus explicit vocabulary counts | Proves persistence and honest separation without inventing exposure/recall evidence. |
-| Accessibility | Keyboard-complete critical flow, named controls, non-color state cues, zoom/reflow, reduced motion | Prevents the risky Reader interaction model from becoming inaccessible by construction. |
+| Decision                | Slice choice                                                                                                           | Reason                                                                                                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interface language      | Turkish                                                                                                                | Matches current product terminology and validation cohort assumption; no language switcher yet.                                                                  |
+| Authentication behavior | Provider-neutral passwordless email link; deterministic non-production delivery for slice verification                 | Avoids custom password/recovery behavior while preserving persistent private ownership; a production managed provider is not required to implement the contract. |
+| Learning language       | French only                                                                                                            | Matches the first quality guarantee; learner still chooses approximate A1–C2 starting level.                                                                     |
+| Import source           | One pasted plain-text submission                                                                                       | Removes file preparation and validates the shortest private intake, async processing, Reader, and persistence loop.                                              |
+| Slice text limit        | 50,000 Unicode scalar values after normalization v1                                                                    | Concrete implementation/acceptance bound; the final production quota is validated later from measured evidence.                                                  |
+| Text normalization      | Plain text only; normalize line endings, trim outer blank lines, preserve internal characters and paragraph breaks     | Gives deterministic behavior without interpreting rich clipboard formatting or silently rewriting content.                                                       |
+| Library title           | First non-empty line, whitespace-normalized and safely truncated to 80 Unicode scalar values; fallback `İsimsiz metin` | Supplies a usable card title without adding metadata fields to the first slice.                                                                                  |
+| Reader mode             | Page View only                                                                                                         | Proves the continuous reading loop; Sentence View remains a later MVP slice.                                                                                     |
+| Word help               | One non-AI preferred meaning with visible provenance; acceptance uses the approved fixture adapter                     | Proves the provider-neutral contract and degradation without a production dictionary or sending private text externally.                                         |
+| Vocabulary actions      | Learning, Known, Ignore, Undo                                                                                          | Proves explicit state and lemma propagation. Cards/Review are not in this slice.                                                                                 |
+| Progress                | Structural reading position/completion plus explicit vocabulary counts                                                 | Proves persistence and honest separation without inventing exposure/recall evidence.                                                                             |
+| Accessibility           | Keyboard-complete critical flow, named controls, non-color state cues, zoom/reflow, reduced motion                     | Prevents the risky Reader interaction model from becoming inaccessible by construction.                                                                          |
 
 Changing a slice choice requires updating this spec and its acceptance scenarios before implementation.
 
@@ -60,7 +60,7 @@ Changing a slice choice requires updating this spec and its acceptance scenarios
 - Import opens a single large multiline field labeled for French text. It supports paste and direct editing, states that submitted content remains private, and shows a live `current / 50,000` character count.
 - Clipboard markup and visual formatting are discarded. Line endings normalize to LF, outer blank lines are trimmed, and internal text/paragraph breaks are preserved; HTML- or Markdown-looking content is never executed or rendered as markup.
 - Validation distinguishes empty/whitespace-only content, ill-formed Unicode, more than 50,000 Unicode scalar values after normalization v1, submission/network interruption, and detected non-French content. Empty, invalid, or over-limit content cannot be submitted. The transport rejects JSON bodies over 512 KiB before parsing.
-- A language mismatch requires an explicit `Yine de Fransızca olarak içe aktar` acknowledgment or editing/replacing the text.
+- A policy-qualified non-French result cannot be submitted to the French workspace; the learner edits or replaces the text. Short or undetermined input remains accepted to avoid false rejection.
 - A recoverable submission failure keeps the current text and counter in the rendered form. Unsubmitted text is not promised to survive navigation, refresh, or sign-out.
 - Submission creates a Library item immediately and returns to Library. Processing continues after navigation or sign-out.
 - A same-account duplicate of the normalized text offers `Mevcut içeriği aç`; it does not create another item or rerun processing by default.
@@ -168,17 +168,17 @@ Out-of-scope items retain their existing Core/Plus/Later priority. This section 
 
 ## Error and recovery summary
 
-| Failure | User-visible behavior | Recovery |
-| --- | --- | --- |
-| Sign-in link invalid/expired | safe message without account disclosure | request a new link |
-| Pasted text empty, ill-formed, or over 50,000 characters | specific inline validation; no item/job | edit the text |
-| Submission/network failure | retain current text and counter while the form remains rendered | retry submission |
-| Text preparation permanent failure | failed Library item with reference ID | create another pasted-text item; no false retry |
-| Analysis transient failure | Reader remains available if text is valid | retry word tools |
-| Meaning unavailable | state/lemma remains usable | retry meaning |
-| Vocabulary mutation fails | prior confirmed state restored | retry mutation |
-| Resume save fails | non-blocking unsaved-position status | retry automatically/manual navigation remains usable |
-| Source anchor missing after revision | nearest valid location and source-changed notice | continue from resolved position |
+| Failure                                                  | User-visible behavior                                           | Recovery                                             |
+| -------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
+| Sign-in link invalid/expired                             | safe message without account disclosure                         | request a new link                                   |
+| Pasted text empty, ill-formed, or over 50,000 characters | specific inline validation; no item/job                         | edit the text                                        |
+| Submission/network failure                               | retain current text and counter while the form remains rendered | retry submission                                     |
+| Text preparation permanent failure                       | failed Library item with reference ID                           | create another pasted-text item; no false retry      |
+| Analysis transient failure                               | Reader remains available if text is valid                       | retry word tools                                     |
+| Meaning unavailable                                      | state/lemma remains usable                                      | retry meaning                                        |
+| Vocabulary mutation fails                                | prior confirmed state restored                                  | retry mutation                                       |
+| Resume save fails                                        | non-blocking unsaved-position status                            | retry automatically/manual navigation remains usable |
+| Source anchor missing after revision                     | nearest valid location and source-changed notice                | continue from resolved position                      |
 
 ## Acceptance scenarios
 
@@ -186,7 +186,7 @@ Out-of-scope items retain their existing Core/Plus/Later priority. This section 
 2. **Minimal onboarding:** Given a first session, choosing French level B1 saves the learning profile and opens empty Library; no goal/tutorial/preferences are required.
 3. **Valid import:** Given non-empty French plain text of at most 50,000 Unicode scalar values after normalization v1, submitting returns to Library with a private item before background processing completes.
 4. **Input boundary:** Given whitespace-only text, ill-formed Unicode, normalized text over 50,000 scalar values, or a JSON body over 512 KiB, submission is blocked with the specific reason and no Library item/job is created; content that resembles HTML or Markdown remains escaped plain text.
-5. **Language mismatch:** Given detectable non-French text, the user must explicitly acknowledge importing it as French or edit/replace it.
+5. **Language mismatch:** Given a policy-qualified non-French result, submission is blocked with corrective guidance and creates no partial state; short or undetermined input is not falsely rejected.
 6. **Duplicate:** Given the same account submits text that normalizes to the same content twice, the second attempt offers the existing item and does not start duplicate processing by default.
 7. **Background continuity:** Given processing is active, navigating elsewhere or signing out does not stop it; returning shows the durable current stage.
 8. **Honest progress:** Given a stage has no reliable total, the UI shows its name/activity and no fabricated percentage.

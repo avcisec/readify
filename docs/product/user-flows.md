@@ -51,7 +51,7 @@ Library → Import
 → choose Paste text, YouTube (when enabled), EPUB, PDF, or Markdown
 → paste/edit plain text, provide URL, or choose a file as appropriate
 → immediate source-specific validation
-→ confirm expected learning language; acknowledge mismatch if detected
+→ confirm expected learning language; correct a high-confidence mismatch if detected
 → submit private import
 → Library item appears immediately with stage/progress
 → leave page or continue using app while work continues

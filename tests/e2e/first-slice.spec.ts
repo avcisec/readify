@@ -143,6 +143,20 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
   await signIn(page, `boundary-${test.info().project.name}@example.test`);
   await page.getByRole("button", { name: "Devam et" }).click();
 
+  await page
+    .getByLabel("Fransızca metin")
+    .fill(
+      "This is the story of a learner and the words that are read with care from the first page. ".repeat(
+        3,
+      ),
+    );
+  await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();
+  await expect(page.getByText(/yalnızca Fransızca metin/iu)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Yine de Fransızca/iu }),
+  ).toHaveCount(0);
+  await expect(page.locator(".item-card")).toHaveCount(0);
+
   const malformed = await page.evaluate(async () => {
     const response = await fetch("/api/v1/imports/pasted-text", {
       method: "POST",
@@ -166,7 +180,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "a".repeat(530_000),
-        languageMismatchAccepted: false,
       }),
     });
     return { status: response.status, body: await response.json() };
@@ -183,7 +196,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "Bonjour au marché avec Camille et Nora. ".repeat(4),
-        languageMismatchAccepted: false,
       }),
     });
     return response.status;
@@ -198,7 +210,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "Camille parle avec le vendeur au café. ".repeat(4),
-        languageMismatchAccepted: false,
       }),
     });
     return { status: response.status, body: await response.json() };
@@ -210,7 +221,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
     headers: { Origin: "https://evil.example", "Idempotency-Key": "evil" },
     data: {
       text: "Bonjour au marché. ".repeat(5),
-      languageMismatchAccepted: false,
     },
   });
   expect(crossOrigin.status()).toBe(403);

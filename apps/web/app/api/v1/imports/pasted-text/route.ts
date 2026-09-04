@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
     const result = await service.createPastedImport(
       identity.userId,
       body.text,
-      body.languageMismatchAccepted,
       requireIdempotency(request),
       correlationId,
     );

@@ -35,7 +35,6 @@ export default function LibraryPage() {
   const [profile, setProfile] = useState<LearningProfile>();
   const [text, setText] = useState("");
   const [message, setMessage] = useState<string>();
-  const [mismatch, setMismatch] = useState(false);
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     try {
@@ -65,7 +64,7 @@ export default function LibraryPage() {
     return () => window.clearTimeout(timer);
   }, [items, load]);
 
-  async function submit(event?: FormEvent, accepted = false) {
+  async function submit(event?: FormEvent) {
     event?.preventDefault();
     setBusy(true);
     setMessage(undefined);
@@ -75,11 +74,10 @@ export default function LibraryPage() {
         {
           method: "POST",
           headers: { "Idempotency-Key": idempotencyKey() },
-          body: JSON.stringify({ text, languageMismatchAccepted: accepted }),
+          body: JSON.stringify({ text }),
         },
       );
       setText("");
-      setMismatch(false);
       setMessage(
         result.outcome === "duplicate"
           ? "Bu metin zaten kütüphanende."
@@ -87,8 +85,6 @@ export default function LibraryPage() {
       );
       await load();
     } catch (error) {
-      if (error instanceof ApiProblem && error.code === "language_mismatch")
-        setMismatch(true);
       setMessage(
         turkishProblem(
           error instanceof Error ? error.message : "request_failed",
@@ -157,14 +153,6 @@ export default function LibraryPage() {
               </button>
             </div>
           </form>
-          {mismatch ? (
-            <button
-              className="secondary"
-              onClick={() => void submit(undefined, true)}
-            >
-              Yine de Fransızca olarak ekle
-            </button>
-          ) : null}
           <p className="inline-message" aria-live="polite">
             {message}
           </p>

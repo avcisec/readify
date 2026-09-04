@@ -143,7 +143,6 @@ export interface ImportApplication {
   createPastedImport(
     userId: string,
     text: string,
-    mismatchAccepted: boolean,
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult>;

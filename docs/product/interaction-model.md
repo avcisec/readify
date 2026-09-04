@@ -151,7 +151,7 @@ Review uses only explicit cards and records each rating once. Recognition, conte
 The Import wizard has two visible steps, not a long technical pipeline:
 
 1. **Choose source:** enabled source type plus URL/file.
-2. **Validate and submit:** supported-format/limit result, expected language, mismatch acknowledgment, private-by-default notice, Submit.
+2. **Validate and submit:** supported-format/limit result, expected language, blocking high-confidence mismatch guidance, private-by-default notice, Submit.
 
 After submission, Library owns progress. User-facing stages use stable language such as `Queued`, `Preparing text`, `Analyzing language`, `Preparing audio`, `Synchronizing`, `Ready to read`, `Ready`, and `Failed`; internal provider names stay in details only when useful. Progress is determinate only when the system knows a reliable total.
 

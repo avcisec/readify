@@ -64,7 +64,7 @@ The delivery layer may compose public queries but owns no business state. Import
 - change vocabulary state;
 - undo a vocabulary state change.
 
-The key is scoped to account, operation, and route. Once a command commits, replaying the same key and canonical request returns the original result without repeating side effects. Reusing it with a different canonical request returns `409 idempotency_key_reused`. Validation responses that commit no state do not consume the key; after a user-visible correction or language-mismatch acknowledgment, the client creates a new key. Committed keys and their canonical request/result identity are retained for at least 24 hours, which is the supported client retry window; same-content import deduplication remains independent and longer lived.
+The key is scoped to account, operation, and route. Once a command commits, replaying the same key and canonical request returns the original result without repeating side effects. Reusing it with a different canonical request returns `409 idempotency_key_reused`. Validation responses that commit no state do not consume the key; after a user-visible correction, the client creates a new key. Committed keys and their canonical request/result identity are retained for at least 24 hours, which is the supported client retry window; same-content import deduplication remains independent and longer lived.
 
 Reader position and section completion use idempotent `PUT` semantics and do not require this header. Clients serialize position saves; the last committed valid position wins across devices.
 
@@ -141,7 +141,7 @@ The server is authoritative even when the browser performs the same checks for r
 
 The pre-normalized request body is not retained. Normalization v1 is exactly steps 2–4 above and does not apply NFC/NFKC, case folding, punctuation substitution, or internal trimming. The normalized private input and normalization version form the immutable Import-owned source input; the first slice may store this bounded text transactionally in PostgreSQL and does not require object storage. Hashes are never exposed through the API or telemetry. Browser and server must share conformance vectors rather than relying on JavaScript UTF-16 `.length`.
 
-Language mismatch detection runs before state is committed. Only a policy-qualified non-French result returns `422 language_mismatch`; undetermined detection does not invent a mismatch. The error may return an allowlisted detected language code but no raw model output. Resubmission with `languageMismatchAccepted: true` records that acknowledgment with the import intent.
+Language mismatch detection runs before state is committed. A policy-qualified non-French result always returns `422 language_mismatch`; there is no client override. Undetermined detection does not invent a mismatch. The error may return an allowlisted detected language code but no raw model output. The legacy `source_revisions.language_mismatch_accepted` column remains default-false for migration compatibility and is not writable through the application contract.
 
 The expected language comes from the authenticated learning profile and is not trusted from the request body. Import without the required profile returns `409 learning_profile_required`.
 
@@ -245,8 +245,7 @@ Request:
 
 ```json
 {
-  "text": "Le texte français…",
-  "languageMismatchAccepted": false
+  "text": "Le texte français…"
 }
 ```
 

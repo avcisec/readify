@@ -225,7 +225,6 @@ export class ReadifyService implements SliceApplication {
   async createPastedImport(
     userId: string,
     text: string,
-    mismatchAccepted: boolean,
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult> {
@@ -251,14 +250,14 @@ export class ReadifyService implements SliceApplication {
       );
     }
     const assessment = this.languageDetector.assess(normalized.text);
-    if (assessment.outcome === "mismatch" && !mismatchAccepted)
+    if (assessment.outcome === "mismatch")
       throw new AppError("language_mismatch", 422, {
         detectedLanguage: assessment.detectedLanguage,
       });
     const digest = this.hash(
       `${userId}:${NORMALIZATION_VERSION}:${normalized.text}`,
     );
-    const requestHash = this.hash(JSON.stringify({ digest, mismatchAccepted }));
+    const requestHash = this.hash(JSON.stringify({ digest }));
     return this.database.transaction().execute(async (transaction) => {
       await sql`select pg_advisory_xact_lock(hashtextextended(${`${userId}:${digest}`}, 0))`.execute(
         transaction,
@@ -298,7 +297,7 @@ export class ReadifyService implements SliceApplication {
         const importId = this.id("imp");
         const libraryItemId = this.id("lib");
         const now = this.timestamp();
-        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, language_mismatch_accepted, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${mismatchAccepted}, ${now})`.execute(
+        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${now})`.execute(
           transaction,
         );
         await sql`insert into import_workflows (id, owner_id, source_revision_id, stage, text_capability, word_tools_capability, updated_at) values (${importId}, ${userId}, ${revisionId}, 'queued', 'pending', 'pending', ${now})`.execute(

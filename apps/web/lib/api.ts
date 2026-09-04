@@ -41,7 +41,7 @@ export function turkishProblem(code: string): string {
     empty_text: "Okumak istediğiniz metni yapıştırın.",
     text_too_long: "Metin 50.000 karakter sınırını aşıyor.",
     language_mismatch:
-      "Metin Fransızca görünmüyor. Yine de devam edebilirsiniz.",
+      "Bu çalışma alanına yalnızca Fransızca metin eklenebilir. Metni kontrol edip yeniden deneyin.",
     learning_profile_required: "Önce kısa öğrenme profilinizi tamamlayın.",
     reader_not_ready: "Metin henüz hazırlanıyor.",
     stale_state_change:

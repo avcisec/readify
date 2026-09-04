@@ -90,7 +90,6 @@ describe("first vertical slice", () => {
     const created = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-1",
       "req-1",
     );
@@ -99,7 +98,6 @@ describe("first vertical slice", () => {
     const replay = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-1",
       "req-1",
     );
@@ -107,7 +105,6 @@ describe("first vertical slice", () => {
     const duplicate = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-2",
       "req-2",
     );
@@ -290,14 +287,12 @@ describe("first vertical slice", () => {
       service.createPastedImport(
         owner.userId,
         text,
-        false,
         "race-1",
         "race-request-1",
       ),
       service.createPastedImport(
         owner.userId,
         text,
-        false,
         "race-2",
         "race-request-2",
       ),
@@ -370,7 +365,6 @@ describe("first vertical slice", () => {
       service.createPastedImport(
         owner.userId,
         english,
-        false,
         "language-1",
         "req-language",
       ),
@@ -381,20 +375,23 @@ describe("first vertical slice", () => {
       database,
     );
     expect(counts.rows[0]?.count).toBe("0");
-    const accepted = await service.createPastedImport(
-      owner.userId,
-      english,
-      true,
-      "language-accepted",
-      "req-language-accepted",
-    );
-    expect(accepted.status).toBe(202);
-    const acknowledgment = await sql<{
-      accepted: boolean;
-    }>`select language_mismatch_accepted as accepted from source_revisions where owner_id=${owner.userId}`.execute(
-      database,
-    );
-    expect(acknowledgment.rows[0]?.accepted).toBe(true);
+    await expect(
+      service.createPastedImport(
+        owner.userId,
+        english,
+        "language-2",
+        "req-language-2",
+      ),
+    ).rejects.toMatchObject({ code: "language_mismatch" });
+    expect(
+      (
+        await sql<{
+          count: string;
+        }>`select count(*)::text as count from source_revisions where owner_id=${owner.userId}`.execute(
+          database,
+        )
+      ).rows[0]?.count,
+    ).toBe("0");
   });
 
   it("keeps Reader available after analyzer exhaustion and supports a targeted retry", async () => {
@@ -411,7 +408,6 @@ describe("first vertical slice", () => {
     const created = await resilientService.createPastedImport(
       owner.userId,
       "Camille mange une pomme avec Nora. Elle parle avec le vendeur et choisit du pain au marché.",
-      false,
       "degraded-import",
       "degraded-request",
     );

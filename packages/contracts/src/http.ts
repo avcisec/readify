@@ -21,7 +21,6 @@ export const learningProfileSchema = z
 export const pastedTextImportSchema = z
   .object({
     text: z.string(),
-    languageMismatchAccepted: z.boolean().default(false),
   })
   .strict();
 
