@@ -103,12 +103,21 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await expect(page.getByText(/kullanım/u).first()).toBeVisible();
   await page.getByRole("link", { name: "Metinde aç" }).click();
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
+  const positionSaved = page.waitForResponse(
+    (response) =>
+      response.url().includes("/reader-position") &&
+      response.request().method() === "PUT" &&
+      response.ok(),
+  );
+  await page.locator(".reader-paragraph").last().scrollIntoViewIfNeeded();
+  await positionSaved;
   await page.getByRole("link", { name: "Kütüphane" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("link", { name: "Devam et" }).first().click();
   await expect(
     page.getByRole("button", { name: "mange", exact: true }).first(),
   ).toHaveClass(/token-learning/u);
+  await expect(page.locator(".reader-paragraph").last()).toBeInViewport();
   await page.getByRole("button", { name: "Nora", exact: true }).first().click();
   await expect(page.getByText(/sınırlı geliştirme sözlüğünde/iu)).toBeVisible();
   await expect(

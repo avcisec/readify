@@ -65,6 +65,10 @@ type Change = {
   vocabularyItem: null | { id: string; state: State; version: number };
   stateChangeId: string;
 };
+type PositionAnchor = {
+  paragraphId: string;
+  sentenceId?: string | null;
+};
 const stateLabels = {
   learning: "Öğreniyorum",
   known: "Biliyorum",
@@ -80,6 +84,11 @@ export default function ReaderPage() {
   const [lastChange, setLastChange] = useState<string>();
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const activeToken = useRef<HTMLButtonElement | null>(null);
+  const trackingReady = useRef(false);
+  const observedParagraph = useRef<string | undefined>(undefined);
+  const pendingPosition = useRef<PositionAnchor | undefined>(undefined);
+  const positionSave = useRef<Promise<void> | null>(null);
+  const positionTimer = useRef<number | undefined>(undefined);
   const load = useCallback(async () => {
     try {
       setReader(
@@ -99,18 +108,118 @@ export default function ReaderPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  const flushPosition = useCallback(
+    async (keepalive = false) => {
+      if (!reader || positionSave.current || !pendingPosition.current) return;
+      const anchor = pendingPosition.current;
+      pendingPosition.current = undefined;
+      const request = api<void>(
+        `/api/v1/library-items/${libraryItemId}/reader-position`,
+        {
+          method: "PUT",
+          keepalive,
+          body: JSON.stringify({
+            sourceRevisionId: reader.sourceRevisionId,
+            anchor: {
+              sectionId: reader.section.id,
+              paragraphId: anchor.paragraphId,
+              sentenceId: anchor.sentenceId ?? null,
+            },
+          }),
+        },
+      )
+        .catch(() => {
+          pendingPosition.current ??= anchor;
+        })
+        .finally(() => {
+          positionSave.current = null;
+          if (pendingPosition.current && !keepalive)
+            window.setTimeout(() => void flushPosition(), 0);
+        });
+      positionSave.current = request;
+      await request;
+    },
+    [libraryItemId, reader],
+  );
+  const queuePosition = useCallback(
+    (anchor: PositionAnchor, immediate = false) => {
+      pendingPosition.current = anchor;
+      window.clearTimeout(positionTimer.current);
+      if (immediate) void flushPosition();
+      else
+        positionTimer.current = window.setTimeout(
+          () => void flushPosition(),
+          750,
+        );
+    },
+    [flushPosition],
+  );
   useEffect(() => {
-    if (reader?.savedPosition)
-      document
-        .getElementById(reader.savedPosition.anchor.paragraphId)
-        ?.scrollIntoView({ block: "center" });
-  }, [reader]);
-  useEffect(() => {
-    if (!reader || !window.location.hash.startsWith("#occurrence-")) return;
-    const target = document.getElementById(window.location.hash.slice(1));
+    if (!reader) return;
+    trackingReady.current = false;
+    const hashTarget = window.location.hash.startsWith("#occurrence-")
+      ? document.getElementById(window.location.hash.slice(1))
+      : null;
+    const target =
+      hashTarget ??
+      (reader.savedPosition
+        ? document.getElementById(reader.savedPosition.anchor.paragraphId)
+        : null);
     target?.scrollIntoView({ block: "center" });
-    target?.focus();
+    if (hashTarget instanceof HTMLElement) hashTarget.focus();
+    observedParagraph.current =
+      target?.closest(".reader-paragraph")?.id ??
+      reader.savedPosition?.anchor.paragraphId ??
+      reader.paragraphs[0]?.id;
+    const firstFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        trackingReady.current = true;
+      });
+    });
+    return () => window.cancelAnimationFrame(firstFrame);
   }, [reader]);
+  useEffect(() => {
+    if (!reader) return;
+    let frame = 0;
+    function observePosition() {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (!trackingReady.current) return;
+        const paragraphs = [
+          ...document.querySelectorAll<HTMLElement>(".reader-paragraph"),
+        ];
+        const readingLine = window.innerHeight * 0.35;
+        let current = paragraphs[0];
+        for (const paragraph of paragraphs) {
+          if (paragraph.getBoundingClientRect().top > readingLine) break;
+          current = paragraph;
+        }
+        if (!current || observedParagraph.current === current.id) return;
+        observedParagraph.current = current.id;
+        queuePosition({ paragraphId: current.id });
+      });
+    }
+    function flushPending() {
+      window.clearTimeout(positionTimer.current);
+      void flushPosition(true);
+    }
+    function visibilityChanged() {
+      if (document.visibilityState === "hidden") flushPending();
+    }
+    window.addEventListener("scroll", observePosition, { passive: true });
+    window.addEventListener("resize", observePosition);
+    window.addEventListener("pagehide", flushPending);
+    document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(positionTimer.current);
+      window.removeEventListener("scroll", observePosition);
+      window.removeEventListener("resize", observePosition);
+      window.removeEventListener("pagehide", flushPending);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+      flushPending();
+    };
+  }, [flushPosition, queuePosition, reader]);
   useEffect(() => {
     if (!context) return;
     function escapeContext(event: globalThis.KeyboardEvent) {
@@ -139,17 +248,10 @@ export default function ReaderPage() {
       setContext(result);
       setLastChange(undefined);
       setMessage(undefined);
-      await api(`/api/v1/library-items/${libraryItemId}/reader-position`, {
-        method: "PUT",
-        body: JSON.stringify({
-          sourceRevisionId: reader!.sourceRevisionId,
-          anchor: {
-            sectionId: reader!.section.id,
-            paragraphId: paragraph.id,
-            sentenceId: occurrence.sentenceId,
-          },
-        }),
-      });
+      queuePosition(
+        { paragraphId: paragraph.id, sentenceId: occurrence.sentenceId },
+        true,
+      );
       window.setTimeout(() => panelHeading.current?.focus(), 0);
     } catch (error) {
       setMessage(
@@ -268,7 +370,7 @@ export default function ReaderPage() {
             <p className="reader-meta">
               {reader.section.completed
                 ? "Bölüm tamamlandı"
-                : "Okuma konumun kelime seçtikçe saklanır."}
+                : "Okuma konumun ilerledikçe otomatik saklanır."}
             </p>
           </header>
           {reader.processing.capabilities.wordTools !== "ready" ? (

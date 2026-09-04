@@ -97,7 +97,7 @@ Use only the state model already defined by product truth:
 
 ## Reading and resume state
 
-Persist at safe checkpoints and on navigation/backgrounding:
+Persist at debounced semantic scroll checkpoints and on navigation/backgrounding, even when the learner never opens a word:
 
 - Library item and current document revision;
 - chapter/section and stable paragraph/sentence anchor;
