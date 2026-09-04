@@ -110,11 +110,10 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
     page.getByRole("button", { name: "mange", exact: true }).first(),
   ).toHaveClass(/token-learning/u);
   await page.getByRole("button", { name: "Nora", exact: true }).first().click();
+  await expect(page.getByText(/sınırlı geliştirme sözlüğünde/iu)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Anlamı yeniden dene" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Anlamı yeniden dene" }).click();
-  await expect(page.getByText(/doğrulanmış anlam/iu)).toBeVisible();
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Bölümü tamamla" }).click();
   await page.getByRole("link", { name: "İlerleme" }).click();

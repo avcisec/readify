@@ -5,7 +5,13 @@ export type MeaningResult =
       source: string;
       datasetVersion: string;
     }
-  | { availability: "unavailable"; source: string; datasetVersion: string };
+  | {
+      availability: "unavailable";
+      source: string;
+      datasetVersion: string;
+      reason: "not_in_fixture" | "temporarily_unavailable";
+      retryable: boolean;
+    };
 
 const FIXTURE_MEANINGS: Record<string, string> = {
   aller: "gitmek",
@@ -30,5 +36,7 @@ export function fixtureMeaning(lemma: string): MeaningResult {
         availability: "unavailable",
         source: "readify_cc0_fixture",
         datasetVersion: "1",
+        reason: "not_in_fixture",
+        retryable: false,
       };
 }

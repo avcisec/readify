@@ -15,12 +15,20 @@ type VocabularyItem = {
   firstSentence: string;
   occurrenceCount: number;
   source: { libraryItemId: string; occurrenceId: string };
-  meaning: {
-    availability: "available" | "unavailable";
-    meaning?: string;
-    source: string;
-    datasetVersion: string;
-  };
+  meaning:
+    | {
+        availability: "available";
+        meaning: string;
+        source: string;
+        datasetVersion: string;
+      }
+    | {
+        availability: "unavailable";
+        source: string;
+        datasetVersion: string;
+        reason: "not_in_fixture" | "temporarily_unavailable";
+        retryable: boolean;
+      };
 };
 const labels = {
   learning: "Öğreniyorum",
@@ -82,7 +90,11 @@ export default function VocabularyPage() {
                       {item.meaning.source}
                     </span>
                   ) : (
-                    <span>Doğrulanmış anlam yok</span>
+                    <span>
+                      {item.meaning.reason === "not_in_fixture"
+                        ? "Sınırlı geliştirme sözlüğünde yok; gerçek sözlük henüz bağlı değil."
+                        : "Anlam kaynağına şu an ulaşılamıyor."}
+                    </span>
                   )}
                   <Link
                     href={`/reader/${item.source.libraryItemId}#occurrence-${item.source.occurrenceId}`}

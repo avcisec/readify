@@ -46,12 +46,20 @@ type Context = {
   };
   sentence: string;
   vocabulary: null | { id: string; state: State; version: number };
-  meaning: {
-    availability: "available" | "unavailable";
-    meaning?: string;
-    source: string;
-    datasetVersion: string;
-  };
+  meaning:
+    | {
+        availability: "available";
+        meaning: string;
+        source: string;
+        datasetVersion: string;
+      }
+    | {
+        availability: "unavailable";
+        source: string;
+        datasetVersion: string;
+        reason: "not_in_fixture" | "temporarily_unavailable";
+        retryable: boolean;
+      };
 };
 type Change = {
   vocabularyItem: null | { id: string; state: State; version: number };
@@ -330,13 +338,19 @@ export default function ReaderPage() {
               </section>
             ) : (
               <section className="meaning-card unavailable">
-                <p>Bu kelime için doğrulanmış anlam şu an yok.</p>
-                <button
-                  className="secondary"
-                  onClick={() => void retryMeaning()}
-                >
-                  Anlamı yeniden dene
-                </button>
+                <p>
+                  {context.meaning.reason === "not_in_fixture"
+                    ? "Bu kelime sınırlı geliştirme sözlüğünde yok. Gerçek Fransızca–Türkçe sözlük henüz bağlı değil."
+                    : "Anlam kaynağına şu an ulaşılamıyor."}
+                </p>
+                {context.meaning.retryable ? (
+                  <button
+                    className="secondary"
+                    onClick={() => void retryMeaning()}
+                  >
+                    Anlamı yeniden dene
+                  </button>
+                ) : null}
               </section>
             )}
             <div className="source-context">
