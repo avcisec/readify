@@ -20,6 +20,7 @@ type Item = {
     error: null | { code: string; referenceId: string };
   };
 };
+type LearningProfile = { targetLanguage: "fr"; startingLevel: string };
 
 const stageCopy: Record<string, string> = {
   queued: "Sırada",
@@ -31,6 +32,7 @@ const stageCopy: Record<string, string> = {
 export default function LibraryPage() {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
+  const [profile, setProfile] = useState<LearningProfile>();
   const [text, setText] = useState("");
   const [message, setMessage] = useState<string>();
   const [mismatch, setMismatch] = useState(false);
@@ -52,6 +54,11 @@ export default function LibraryPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    void api<LearningProfile>("/api/v1/me/learning-profile")
+      .then(setProfile)
+      .catch(() => undefined);
+  }, []);
   useEffect(() => {
     if (!items.some((item) => item.processing.overall === "processing")) return;
     const timer = window.setTimeout(() => void load(), 1500);
@@ -111,6 +118,12 @@ export default function LibraryPage() {
             <p className="page-intro">
               Fransızca metinlerini ekle, kaldığın yerden okumaya devam et.
             </p>
+            {profile ? (
+              <p className="profile-summary" aria-label="Öğrenme profili">
+                <span aria-hidden="true">FR</span>
+                Fransızca · {profile.startingLevel}
+              </p>
+            ) : null}
           </div>
           <a className="button-link heading-action" href="#import-title">
             <span aria-hidden="true">＋</span> Metin ekle

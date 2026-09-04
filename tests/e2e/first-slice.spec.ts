@@ -30,6 +30,9 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await page.getByLabel("Yaklaşık seviyen").selectOption("B1");
   await page.getByRole("button", { name: "Devam et" }).click();
   await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByLabel("Öğrenme profili")).toContainText(
+    "Fransızca · B1",
+  );
 
   await page.getByLabel("Fransızca metin").fill(fixture);
   await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();

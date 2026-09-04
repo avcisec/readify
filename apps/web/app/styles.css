@@ -273,6 +273,24 @@ textarea {
   color: var(--muted);
   font-size: 1.02rem;
 }
+.profile-summary {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+.profile-summary span {
+  padding: 0.2rem 0.38rem;
+  border-radius: 0.3rem;
+  color: var(--brand);
+  background: var(--brand-soft);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
 .eyebrow {
   margin-bottom: 0.5rem;
   color: var(--muted);

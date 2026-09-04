@@ -16,7 +16,7 @@ The MVP uses nine screens/surfaces. Processing, contextual lookup, Anki export, 
 - **Entry:** first successful authentication without a profile.
 - **Actions / information:** French target language, approximate A1–C2 level, clear explanation that it sets defaults rather than testing proficiency.
 - **Empty:** no level chosen. **Loading:** profile saving. **Error:** preserve selection and retry. **Success:** confirmation and empty Library.
-- **Exit:** Library; sign out. Do not add interests, tutorial carousels, goals, or notification prompts to MVP onboarding.
+- **Exit:** Library; sign out. Library repeats the saved target language and starting level as a read-only summary so the learner can verify onboarding succeeded. Do not add interests, tutorial carousels, goals, or notification prompts to MVP onboarding.
 
 ## 3. Library (authenticated home)
 
