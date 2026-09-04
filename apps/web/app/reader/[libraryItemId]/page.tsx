@@ -182,12 +182,17 @@ export default function ReaderPage() {
       target?.closest(".reader-paragraph")?.id ??
       reader.savedPosition?.anchor.paragraphId ??
       reader.paragraphs[0]?.id;
+    let secondFrame = 0;
     const firstFrame = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
         trackingReady.current = true;
       });
     });
-    return () => window.cancelAnimationFrame(firstFrame);
+    return () => {
+      trackingReady.current = false;
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+    };
   }, [reader]);
   useEffect(() => {
     if (!reader) return;

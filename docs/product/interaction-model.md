@@ -66,7 +66,7 @@ click/tap/focus token
 → optional detail: pronunciation, morphology/POS, grammar in sentence, occurrences
 ```
 
-Lookup failure leaves the token selected and offers Retry; already available state and deterministic annotation remain visible. Selecting another token replaces the panel content without stacking panels.
+Lookup failure leaves the token selected; already available state and deterministic annotation remain visible. Retry appears only for a failure classified as retryable. Selecting another token replaces the panel content without stacking panels.
 
 ### Expression
 

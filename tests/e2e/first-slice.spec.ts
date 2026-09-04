@@ -127,6 +127,31 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   page.off("request", countStateRequest);
   expect(duplicateStateRequests).toBe(0);
 
+  await page.route(
+    "**/api/v1/vocabulary-state-changes/*/undo",
+    async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          type: "urn:readify:problem:stale_state_change",
+          title: "stale_state_change",
+          status: 409,
+          code: "stale_state_change",
+          referenceId: "ref_stale_undo_browser_test",
+        }),
+      });
+    },
+  );
+  await page.getByRole("button", { name: "Geri al" }).click();
+  await expect(
+    page.getByText(
+      "Bu değişiklikten sonra başka bir işlem yapıldığı için geri alınamıyor.",
+    ),
+  ).toBeAttached();
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  await page.unroute("**/api/v1/vocabulary-state-changes/*/undo");
+
   await page.getByRole("link", { name: "Kelimeler" }).click();
   await expect(page.getByText("manger", { exact: true })).toBeVisible();
   await expect(page.locator(".state-new")).toContainText("1 · New");

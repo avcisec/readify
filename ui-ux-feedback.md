@@ -3,7 +3,7 @@ Bu dosyada ui ux wireframe ilk versiyonunun kullanim sonrasi feedbackleri vardir
 
 Şu anda doğru çalışması gerekenler:
 
-- Yerel passwordless giriş bağlantısı 
+- Yerel passwordless giriş bağlantısı
 Test sonucu: Paswordless giriş bağlantısı çalışıyor. (çok bir olayı yok zaten.)
 
 - Fransızca seviye onboarding’i
@@ -11,16 +11,16 @@ Test sonucu: Paswordless giriş bağlantısı çalışıyor. (çok bir olayı yo
 Test sonucu: Seçimi yaptıktan sonra /library arayüzü açılıyor normal akışta olduğu gibi. Ancak seviye seçiminin uygulanıp uygulanmadığı konusunu profil sayfası olmadığı için ve anasayfada herhangi bir yerde yer almadığı için doğrulayamadım.
 
 - 50.000 karaktere kadar metin yapıştırma
-Test sonucu: 50.000 karakter sınırı çalışıyor. 
+Test sonucu: 50.000 karakter sınırı çalışıyor.
 
 - Fransızca olmayan metin için uyarı/onay
-Test sonucu: Fransızca olmayan metin için uyarı veriyor. Ancak bu metni fransızca dil öğrenim sayfasındayken ekleyebilmek çok doğru gelmedi. Fransızca olmayan metni ekleyemeyelim bence. Ya da bu konuda görüşünü bekliyorum. Benim kaçırdığım bir UX standardı olarak fransızca olmasa bile eklenmesi gerekiyor mu? 
+Test sonucu: Fransızca olmayan metin için uyarı veriyor. Ancak bu metni fransızca dil öğrenim sayfasındayken ekleyebilmek çok doğru gelmedi. Fransızca olmayan metni ekleyemeyelim bence. Ya da bu konuda görüşünü bekliyorum. Benim kaçırdığım bir UX standardı olarak fransızca olmasa bile eklenmesi gerekiyor mu?
 Değerlendirelim.
 
 
 - Arka planda metin işleme ve Library durumları
 
-Metin işleme doğru çalışıyor. Ancak ui olarak çok iyi değil. Mesela metin ekle butonu var tıklayınca text inputa götürüyor ama kullanıcı butona basmak yerine direkt olarak inputa da yapıştırabilir. Zaten oralar çok değişecek. 
+Metin işleme doğru çalışıyor. Ancak ui olarak çok iyi değil. Mesela metin ekle butonu var tıklayınca text inputa götürüyor ama kullanıcı butona basmak yerine direkt olarak inputa da yapıştırabilir. Zaten oralar çok değişecek.
 
 
 - Library’den metni açma ve devam etme
@@ -37,19 +37,19 @@ Test sonucu: Metindeki biçim
 toujours
 →
 Lemma
-toujours (lemma) şeklinde görebiliyorum kelimeye tıkladığımda. Sözlük olarak göremedim galiba henüz çalışmıyor. Galiba bu aşamada bu aşamada sözlük olayı çalışmıyor değil mi? 
+toujours (lemma) şeklinde görebiliyorum kelimeye tıkladığımda. Sözlük olarak göremedim galiba henüz çalışmıyor. Galiba bu aşamada bu aşamada sözlük olayı çalışmıyor değil mi?
 
 - Kelimeyi `Öğreniyorum`, `Biliyorum` veya `Yoksay` olarak işaretleme
 
-Test sonucu:  Kelimenin state'i işaretleniyor ve vocabulary sayfasında o şekilde görebiliyorum. 
+Test sonucu:  Kelimenin state'i işaretleniyor ve vocabulary sayfasında o şekilde görebiliyorum.
 - Son değişikliği geri alma
-Bunu nasıl test edeceğim anlamadım. 
+Bunu nasıl test edeceğim anlamadım.
 - Vocabulary ekranında kayıtlı kelimeleri görme
-Test sonucu: Evet kayıtlı kelimeleri görebiliyorum. 
+Test sonucu: Evet kayıtlı kelimeleri görebiliyorum.
 - Kelimenin metindeki yerine dönme
-Test sonucu: kelimenin metindeki yerini görebiliyorum. 
+Test sonucu: kelimenin metindeki yerini görebiliyorum.
 - Semantik okuma konumunu kaydetme ve devam etme
-Test sonucu: bir kelimeye tıklayıp o kelimeyle ilgili state'i güncellediğimde çıkıp tekrar girince o kelimenin olduğu yere geliyorum. Peki ya hiç kelimeye tıklamazsak? Bu durumda en son bulunduğumuz yeri de açmak lazım. Zaten chapterlara bölüp her chapter'ı ayrı açmamız daha mantıklı. Linguacafe'de olduğu gibi. 
+Test sonucu: bir kelimeye tıklayıp o kelimeyle ilgili state'i güncellediğimde çıkıp tekrar girince o kelimenin olduğu yere geliyorum. Peki ya hiç kelimeye tıklamazsak? Bu durumda en son bulunduğumuz yeri de açmak lazım. Zaten chapterlara bölüp her chapter'ı ayrı açmamız daha mantıklı. Linguacafe'de olduğu gibi.
 
 - Bölümü tamamlandı olarak işaretleme
 Çalışıyor.

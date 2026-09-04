@@ -107,7 +107,7 @@ The surface shows a loading state, surface form, lemma when available, current e
 - A successful change updates every visible occurrence of that lemma and shows Undo.
 - Undo restores the prior confirmed state and every inherited occurrence presentation.
 - Selecting another token replaces, rather than stacks, contextual content.
-- Meaning lookup failure leaves deterministic token/lemma/state information and state actions usable when analysis exists; it offers Retry for meaning only.
+- Meaning lookup failure leaves deterministic token/lemma/state information and state actions usable when analysis exists; it offers meaning-only Retry when the failure is classified as retryable.
 - State-save failure restores the prior confirmed state and offers Retry. The UI never claims an unsaved change succeeded.
 
 Phrase selection, pronunciation audio, manual meaning editing, translation, cards, Review, detailed morphology/grammar, and dependency visualization are outside this slice.
