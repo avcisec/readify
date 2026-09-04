@@ -33,6 +33,8 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await expect(page.getByLabel("Öğrenme profili")).toContainText(
     "Fransızca · B1",
   );
+  await expect(page.locator(".library-heading .heading-action")).toHaveCount(0);
+  await expect(page.getByLabel("Fransızca metin")).toBeVisible();
 
   await page.getByLabel("Fransızca metin").fill(fixture);
   await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();

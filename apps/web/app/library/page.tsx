@@ -125,9 +125,6 @@ export default function LibraryPage() {
               </p>
             ) : null}
           </div>
-          <a className="button-link heading-action" href="#import-title">
-            <span aria-hidden="true">＋</span> Metin ekle
-          </a>
         </section>
         <section className="panel import-panel" aria-labelledby="import-title">
           <div className="panel-heading">
