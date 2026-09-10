@@ -32,6 +32,16 @@ High-risk examples from [FEATURES.md](../../FEATURES.md) should become executabl
 
 ## Verification tiers
 
-`make verify` is the merge baseline: verification-harness regression tests, format, lint, typecheck, unit/domain, integration/API, architecture, migrations, and baseline security. Expensive E2E/media-quality suites remain separate but are required by CI for this implemented surface. No executable check in `make verify` is a foundation skip.
+Choose the smallest tier that fully covers the changed surface:
+
+| Change class | Required local gate | CI gate |
+| --- | --- | --- |
+| Documentation or execution-plan text only | `make verify-docs` | Documentation |
+| Runtime code, dependencies, configuration, tooling, or migrations | targeted checks, then `make verify` | Verify |
+| Browser-visible behavior, web runtime, critical-flow API/worker behavior, or E2E infrastructure | targeted checks, `make verify`, then `make e2e` | Verify + Browser |
+
+`make verify-docs` runs harness regression tests, first-party text hygiene, secret hygiene, product-contract checks, and documentation link/context checks without installing or exercising the application runtime. `make verify` remains the runtime merge baseline: verification-harness regression tests, format, lint, typecheck, unit/domain, integration/API, architecture, migrations, and dependency/security checks. No executable check in `make verify` is a foundation skip.
+
+GitHub path routing is an optimization, not permission to omit relevant local checks. Mixed changes receive every matching CI gate. When classification is ambiguous, use the broader tier. Browser/media-quality suites remain separate because they are expensive; the Browser workflow is required for the implemented user-flow surfaces listed in its path filter.
 
 For the pasted-text slice, `packages/modules` holds Unicode/language/state policy tests, `packages/platform/src/service.integration.test.ts` exercises real PostgreSQL transactions, leases, tenant isolation, duplicate races, resume, Undo, and projection behavior, and `tests/e2e/first-slice.spec.ts` owns the browser/API critical path.

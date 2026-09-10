@@ -24,7 +24,7 @@ For every non-trivial change: understand/reproduce → plan → implement → ve
 
 ## Mandatory rules
 
-- Run `make verify`. Run relevant targeted tests while iterating; run separate UI/E2E checks when affected.
+- Use the verification tier owned by `docs/quality/testing-strategy.md`: documentation/plan-only changes run `make verify-docs`; runtime, dependency, configuration, and tooling changes run `make verify`; user-flow/browser changes also run `make e2e`. Run targeted checks while iterating.
 - Dependencies flow inward toward domain contracts. Domains do not import another domain's internals; orchestration uses public application interfaces/events.
 - Abstract real external boundaries (storage, queue, email, AI/ML, telemetry), not ordinary internal code.
 - Schema changes require tested migrations. Never rely on manual production edits; destructive changes require an explicit plan and recovery path.
@@ -35,4 +35,4 @@ For every non-trivial change: understand/reproduce → plan → implement → ve
 
 ## Definition of done
 
-Requested behavior and acceptance criteria are satisfied; relevant tests and `make verify` pass; migrations and operations are safe; docs are current; no known regression remains; and independent review has no `BLOCKER` or `MAJOR` findings. If credentials, product decisions, or risky production actions block completion, stop and report the exact blocker.
+Requested behavior and acceptance criteria are satisfied; the required verification tier passes; migrations and operations are safe; docs are current; no known regression remains; and independent review has no `BLOCKER` or `MAJOR` findings. If credentials, product decisions, or risky production actions block completion, stop and report the exact blocker.
