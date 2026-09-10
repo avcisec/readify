@@ -42,3 +42,13 @@ Existing persisted `sections` are the chapter boundary for this UI. The current 
 ## Verification and handoff
 
 Run targeted tests while implementing, then `make verify`, browser E2E, `pnpm build`, and `git diff --check`. Keep this plan active until manual acceptance and independent review pass.
+
+## Evidence
+
+- Implementation commit: `ae8ccaa` (`feat(library): add book index and dedicated import flow`).
+- `make verify`: PASS, including formatting, lint, typecheck, unit/integration, architecture, migration, security, product, and documentation checks.
+- Chromium and Firefox E2E: PASS, 8 tests covering the revised Import → Library → book index → chapter Reader path and existing boundary/responsive behavior.
+- `pnpm build`: PASS; `/import`, `/library/{libraryItemId}`, the book-index API, and section-scoped Reader routes are present in the optimized build.
+- `git diff --check`: PASS.
+
+Manual acceptance and independent review remain the closing gates. The next recommended product-contract phase after this plan closes is the timed-audio and text/audio synchronization slice recorded in the UX decision log.
