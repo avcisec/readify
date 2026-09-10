@@ -1,6 +1,6 @@
 # UI/UX feedback round 1
 
-- Status: implementation active; human acceptance required before completion
+- Status: completed; human acceptance passed
 - Date: 2026-09-04
 - Source feedback: [`ui-ux-feedback.md`](../../../ui-ux-feedback.md)
 - Product contract: [Pasted-text Reader learning loop](../../product-specs/pasted-text-reader-learning-loop.md)
@@ -87,4 +87,4 @@ Automated evidence after the final commit:
 - `git diff --check` passed.
 - WebKit was attempted through the full E2E configuration but could not start because this host lacks Playwright's required `libavif.so.16` and related system packages. `sudo` requires a local password, so installing OS dependencies is an environment action outside this repository change. Chromium and Firefox cover the application assertions successfully.
 
-Human acceptance remains pending at the requested desktop (1440px), tablet (1024/820px), and mobile (500/390px) viewports, including visual contrast, keyboard shortcuts, Undo, semantic resume, mismatch blocking, and fixture-dictionary empty state. Keep this plan under `active/` until the independent review records only `PASS`. No push or merge has been performed.
+Human acceptance passed at the requested desktop (1440px), tablet (1024/820px), and mobile (500/390px) viewports, including visual contrast, keyboard shortcuts, Undo, semantic resume, mismatch blocking, and fixture-dictionary empty state. No push or merge has been performed.
