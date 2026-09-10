@@ -10,5 +10,6 @@ Create it in `active/` before implementation and keep it current when reality ch
 
 - [First vertical slice implementation](active/2026-09-01-first-vertical-slice-implementation.md) — implementation complete; external acceptance gates remain.
 - [Book index and dedicated import surface](active/2026-09-10-book-index-and-import-surface.md) — implementation verification complete; acceptance pending.
+- [File import and chapter extraction](active/2026-09-10-file-import-and-chapter-extraction.md) — planned implementation of PDF/EPUB upload and text-source selection.
 
 Agents read only the plan for their current task. [Completed history](completed/README.md) is not part of the default implementation context.
