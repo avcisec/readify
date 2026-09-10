@@ -11,10 +11,10 @@ import {
 } from "../../../../../server/runtime";
 import { AppError, extractFile, maxUploadBytes } from "@readify/platform";
 
-const MIME_BY_SOURCE = {
-  pdf: "application/pdf",
-  epub: "application/epub+zip",
-} as const;
+function hasExpectedSignature(source: "pdf" | "epub", bytes: Buffer): boolean {
+  if (source === "pdf") return bytes.subarray(0, 5).toString() === "%PDF-";
+  return bytes.subarray(0, 2).toString("ascii") === "PK";
+}
 
 export async function POST(request: NextRequest) {
   const correlationId = requestId(request);
@@ -29,16 +29,13 @@ export async function POST(request: NextRequest) {
       throw new AppError("unsupported_file_type", 422);
     if (!(file instanceof File)) throw new AppError("file_required", 422);
     if (file.size > maxUploadBytes()) throw new AppError("file_too_large", 422);
-    const expectedMime = MIME_BY_SOURCE[source];
     const extension = file.name.toLocaleLowerCase().split(".").at(-1);
-    if (file.type !== expectedMime || extension !== source)
+    const bytes = Buffer.from(await file.arrayBuffer());
+    if (extension !== source || !hasExpectedSignature(source, bytes))
       throw new AppError("unsupported_file_type", 422);
     let chapters;
     try {
-      chapters = await extractFile(
-        Buffer.from(await file.arrayBuffer()),
-        source,
-      );
+      chapters = await extractFile(bytes, source);
     } catch (error) {
       const code = error instanceof Error ? error.message : "file_parse_failed";
       if (
