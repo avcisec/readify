@@ -50,5 +50,6 @@ git diff --check
 
 - `make verify-docs` passed with eight routing/context harness tests and no Node dependency installation.
 - `make verify` passed after the workflow, Makefile, and verifier changes; workflow YAML formatting and `git diff --check` passed.
-- Application behavior and browser commands are unchanged, so local E2E was not repeated; the relocated Browser workflow remains the CI acceptance authority for its own routing change.
+- The relocated Browser workflow exposed a WebKit race between the initial sign-in navigation and a Next development-server route reload. The shared E2E sign-in helper now waits for document commit and then verifies the visible form, preserving a meaningful page-readiness assertion without treating the reload as a product failure.
+- The previously failing semantic-resume scenario passed in Chromium, and the full Chromium/Firefox suite passed (12 tests). Local WebKit cannot start because the workstation lacks its native `libavif.so.16`; GitHub's Browser workflow is the WebKit acceptance authority.
 - Self-review confirmed docs-only, runtime-only, browser-impacting, mixed, fixture, dependency, and workflow-file path classes. No `BLOCKER` or `MAJOR` self-review finding remains; GitHub CI and human acceptance are pending.

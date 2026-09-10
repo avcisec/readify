@@ -13,8 +13,13 @@ const fixture = readFileSync(
 );
 
 async function signIn(page: Page, email: string) {
-  await page.goto("/sign-in");
-  await page.getByLabel("E-posta").fill(email);
+  // Next's development server can reload a freshly compiled route after the
+  // document commits. Waiting for the full load makes WebKit treat that reload
+  // as a competing navigation even though the sign-in page is ready.
+  await page.goto("/sign-in", { waitUntil: "commit" });
+  const emailInput = page.getByLabel("E-posta");
+  await expect(emailInput).toBeVisible();
+  await emailInput.fill(email);
   await page.getByRole("button", { name: "Giriş bağlantısı gönder" }).focus();
   await page.keyboard.press("Enter");
   await page.getByRole("link", { name: "Yerel giriş bağlantısını aç" }).focus();
