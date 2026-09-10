@@ -9,7 +9,12 @@ import {
   requireIdempotency,
   service,
 } from "../../../../../server/runtime";
-import { AppError, extractFile, maxUploadBytes } from "@readify/platform";
+import {
+  AppError,
+  extractFile,
+  logEvent,
+  maxUploadBytes,
+} from "@readify/platform";
 
 function hasExpectedSignature(source: "pdf" | "epub", bytes: Buffer): boolean {
   if (source === "pdf") return bytes.subarray(0, 5).toString() === "%PDF-";
@@ -38,6 +43,11 @@ export async function POST(request: NextRequest) {
       chapters = await extractFile(bytes, source);
     } catch (error) {
       const code = error instanceof Error ? error.message : "file_parse_failed";
+      logEvent({
+        correlationId,
+        event: "file_import.parse_failed",
+        outcome: code,
+      });
       if (
         code === "file_too_large" ||
         code === "file_no_extractable_text" ||
