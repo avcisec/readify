@@ -30,11 +30,12 @@ This repository contains the executable first vertical slice: deterministic non-
 ## Verification
 
 ```bash
+make verify-docs # documentation and execution-plan-only changes
 make verify
-make e2e
+make e2e        # additionally, when browser/user-flow behavior is affected
 ```
 
-`make verify` runs formatting, lint, type checks, unit/domain tests, real-PostgreSQL integration evidence, architecture rules, clean/idempotent migrations, dependency audit, secret hygiene, and product/document checks. `make e2e` separately runs the critical flow and responsive/accessibility assertions on Chromium, Firefox, and WebKit.
+`make verify-docs` is the fast text/product-contract gate. `make verify` runs formatting, lint, type checks, unit/domain tests, real-PostgreSQL integration evidence, architecture rules, clean/idempotent migrations, dependency audit, secret hygiene, and product/document checks. `make e2e` separately runs the critical flow and responsive/accessibility assertions on Chromium, Firefox, and WebKit. Choose the required tier from the [testing strategy](docs/quality/testing-strategy.md); mixed or ambiguous changes use every applicable broader gate.
 
 On a fresh Linux machine, install the browser engines and their OS libraries once before E2E:
 

@@ -19,6 +19,8 @@ Production promotion is blocked until hosting region, availability objectives, b
 
 ## CI implementation
 
-`.github/workflows/verify.yml` installs the pinned Node/pnpm graph, runs `make verify` against disposable PostgreSQL, and builds web/worker artifacts. A separate required browser job installs Playwright's Chromium, Firefox, and WebKit engines and runs `make e2e`. On browser failure, its HTML report, screenshots, and traces are retained for seven days as a repository-scoped artifact. Normal CI uses only the outbox, fixture-meaning, recorded-analysis, and approved synthetic content; it requires no paid credential or model download.
+CI is routed by changed path. `.github/workflows/docs.yml` runs `make verify-docs` for documentation and product-contract changes without installing the Node dependency graph. `.github/workflows/verify.yml` runs `make verify` and builds web/worker artifacts for runtime, configuration, dependency, and tooling changes. `.github/workflows/browser.yml` installs Playwright's Chromium, Firefox, and WebKit engines and runs `make e2e` only when web, critical-flow package/worker, browser-test, dependency, or E2E infrastructure paths change. Mixed changes receive every matching workflow.
+
+On browser failure, its HTML report, screenshots, and traces are retained for seven days as a repository-scoped artifact. Normal CI uses only the outbox, fixture-meaning, recorded-analysis, and approved synthetic content; it requires no paid credential or model download. Path filtering reduces redundant work but does not replace the risk-based local gates in the [testing strategy](../quality/testing-strategy.md).
 
 The current artifacts authorize local/test and restricted synthetic preview only. Production promotion remains blocked by the gates above, and startup rejects deterministic provider adapters when `APP_ENV=production`.

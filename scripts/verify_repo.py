@@ -172,6 +172,7 @@ def check_docs() -> None:
             if not (path.parent / clean_target).resolve().exists():
                 errors.append(f"{path.relative_to(ROOT)}: missing link target {target}")
     errors.extend(documentation_context_errors())
+    errors.extend(verification_routing_errors())
     if errors:
         raise Failure("\n".join(errors))
 
@@ -218,6 +219,52 @@ def documentation_context_errors(root: Path = ROOT) -> list[str]:
                 errors.append(
                     f"docs/{relative.as_posix()}: {lines} lines exceed the active-document budget of 500; split by owning concern"
                 )
+    return errors
+
+
+def verification_routing_errors(root: Path = ROOT) -> list[str]:
+    errors: list[str] = []
+    required_markers = {
+        "Makefile": ("verify-docs:",),
+        "AGENTS.md": ("make verify-docs", "make verify", "make e2e"),
+        ".github/workflows/docs.yml": (
+            "pull_request:",
+            "push:",
+            "**/*.md",
+            "make verify-docs",
+        ),
+        ".github/workflows/verify.yml": ("pull_request:", "push:", "paths-ignore:"),
+        ".github/workflows/browser.yml": (
+            "pull_request:",
+            "push:",
+            "apps/web/**",
+            "packages/platform/**",
+            "tests/e2e/**",
+            "docs/product/fixtures/**",
+            "scripts/start_e2e.sh",
+            "compose.yaml",
+            "pnpm-lock.yaml",
+            "make e2e",
+        ),
+    }
+    contents: dict[str, str] = {}
+    for relative, markers in required_markers.items():
+        path = root / relative
+        if not path.is_file():
+            errors.append(f"{relative}: missing verification routing entry point")
+            continue
+        text = path.read_text(encoding="utf-8")
+        contents[relative] = text
+        for marker in markers:
+            if marker not in text:
+                errors.append(f"{relative}: missing verification routing marker {marker}")
+
+    docs_workflow = contents.get(".github/workflows/docs.yml", "")
+    if "pnpm install" in docs_workflow:
+        errors.append(".github/workflows/docs.yml: documentation gate must not install the Node dependency graph")
+    verify_workflow = contents.get(".github/workflows/verify.yml", "")
+    if "make e2e" in verify_workflow:
+        errors.append(".github/workflows/verify.yml: browser acceptance belongs in browser.yml")
     return errors
 
 
@@ -381,6 +428,7 @@ def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else "all"
     if command == "help":
         print("make verify            Run every repository check")
+        print("make verify-docs       Run fast documentation-only checks")
         print("make format-check      Check text formatting")
         print("make lint              Validate local documentation links")
         print("make product-check     Validate product-flow and UX contracts")

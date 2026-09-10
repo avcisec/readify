@@ -1,4 +1,4 @@
-.PHONY: help verify format-check lint product-check typecheck test integration-test architecture-check migration-check security-check e2e
+.PHONY: help verify verify-docs format-check lint product-check typecheck test integration-test architecture-check migration-check security-check e2e
 
 PYTHON ?= python3
 
@@ -15,6 +15,13 @@ verify:
 	@pnpm architecture:check
 	@pnpm migrations:check
 	@pnpm security:check
+	@$(PYTHON) scripts/verify_repo.py product
+	@$(PYTHON) scripts/verify_repo.py docs
+
+verify-docs:
+	@$(PYTHON) -m unittest discover -s scripts -p 'test_*.py'
+	@$(PYTHON) scripts/verify_repo.py format
+	@$(PYTHON) scripts/verify_repo.py security
 	@$(PYTHON) scripts/verify_repo.py product
 	@$(PYTHON) scripts/verify_repo.py docs
 
