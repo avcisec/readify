@@ -4,24 +4,24 @@ This log separates interaction decisions resolved from existing product evidence
 
 ## Resolved from current product truth
 
-| Decision | Resolution |
-| --- | --- |
-| Product center | Library is authenticated home; Reader is the central learning surface. |
-| Reader lookup | One contextual surface: desktop side panel, tablet drawer, mobile bottom sheet; no lookup navigation or routine modal. |
-| Vocabulary state | New/unclassified, Learning, Known, Ignored only; Recall Confirmed is derived evidence, not an editable Reader state. |
-| Save behavior | Lookup alone saves no vocabulary/card. Learning/Known/Ignore/Add card are explicit, reversible actions. |
-| Completion | Completing a section never bulk-marks words Known. |
-| Processing | Status belongs to Library items; valid text opens even when optional audio/analysis is pending or failed. |
-| Audio degradation | Word timing when valid, sentence timing fallback, unsynchronized playback label when only audio is usable. |
-| Resume | Restore semantic text anchor, view, sentence, and playback position; never count opening as reading. |
-| Responsive Reader | Side panel becomes drawer/bottom sheet; compact player stays available and must not hide selected text. |
-| Standalone audio import | Not an MVP source because current product truth lists pasted text, YouTube, EPUB, PDF, and Markdown only. |
-| Plain-text intake | TXT file upload is removed. Users paste or type into a large plain-text field; clipboard formatting is discarded and paragraph breaks are retained. |
+| Decision                        | Resolution                                                                                                                                                                                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product center                  | Library is authenticated home; Reader is the central learning surface.                                                                                                                                                                       |
+| Reader lookup                   | One contextual surface: desktop side panel, tablet drawer, mobile bottom sheet; no lookup navigation or routine modal.                                                                                                                       |
+| Vocabulary state                | Lookup-only unclassified plus explicit 1 New, 2 Recognised, 3 Familiar, 4 Learned, Known, and Ignored; Recall Confirmed remains derived evidence.                                                                                            |
+| Save behavior                   | Lookup alone saves no vocabulary/card. Selecting 1–4, Known, Ignore, or Add card is explicit and reversible.                                                                                                                                 |
+| Completion                      | Completing a section never bulk-marks words Known.                                                                                                                                                                                           |
+| Processing                      | Status belongs to Library items; valid text opens even when optional audio/analysis is pending or failed.                                                                                                                                    |
+| Audio degradation               | Word timing when valid, sentence timing fallback, unsynchronized playback label when only audio is usable.                                                                                                                                   |
+| Resume                          | Restore semantic text anchor, view, sentence, and playback position; never count opening as reading.                                                                                                                                         |
+| Responsive Reader               | Side panel becomes drawer/bottom sheet; compact player stays available and must not hide selected text.                                                                                                                                      |
+| Standalone audio import         | Not an MVP source because current product truth lists pasted text, YouTube, EPUB, PDF, and Markdown only.                                                                                                                                    |
+| Plain-text intake               | TXT file upload is removed. Users paste or type into a large plain-text field; clipboard formatting is discarded and paragraph breaks are retained.                                                                                          |
 | First-slice technical readiness | The 50,000-scalar implementation limit, WCAG 2.2 AA verification baseline, and CC0 French fixture are accepted; vendor selection and public support policy are deferred in [first-slice readiness](first-slice-implementation-readiness.md). |
 
 ## Applied to the first vertical slice
 
-The [pasted-text Reader learning-loop specification](../product-specs/pasted-text-reader-learning-loop.md) applies these reversible defaults: Turkish UI, passwordless email behavior, French-only profile, one plain-text submission up to 50,000 scalar values, Page View, one non-AI preferred meaning with provenance, Learning/Known/Ignore/Undo, semantic resume, and structural/self-report-only Progress. Implementation uses deterministic non-production identity/meaning adapters. Managed providers, licensed production data, a final launch quota, and a public browser/AT promise are deferred rollout decisions, not implementation blockers.
+The [pasted-text Reader learning-loop specification](../product-specs/pasted-text-reader-learning-loop.md) applies these reversible defaults: Turkish UI, passwordless email behavior, French-only profile, one plain-text submission up to 50,000 scalar values, Page View, one non-AI preferred meaning with provenance, explicit 1–4/Known/Ignore/Undo, semantic resume, and structural/self-report-only Progress. Implementation uses deterministic non-production identity/meaning adapters. Managed providers, licensed production data, a final launch quota, and a public browser/AT promise are deferred rollout decisions, not implementation blockers.
 
 ## Open decisions requiring approval
 

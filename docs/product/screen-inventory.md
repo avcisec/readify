@@ -16,13 +16,13 @@ The MVP uses nine screens/surfaces. Processing, contextual lookup, Anki export, 
 - **Entry:** first successful authentication without a profile.
 - **Actions / information:** French target language, approximate A1–C2 level, clear explanation that it sets defaults rather than testing proficiency.
 - **Empty:** no level chosen. **Loading:** profile saving. **Error:** preserve selection and retry. **Success:** confirmation and empty Library.
-- **Exit:** Library; sign out. Do not add interests, tutorial carousels, goals, or notification prompts to MVP onboarding.
+- **Exit:** Library; sign out. Library repeats the saved target language and starting level as a read-only summary so the learner can verify onboarding succeeded. Do not add interests, tutorial carousels, goals, or notification prompts to MVP onboarding.
 
 ## 3. Library (authenticated home)
 
 - **Purpose / goal:** resume learning, open an item, or import content.
 - **Entry:** post-onboarding, primary navigation, Reader Back, completed import.
-- **Actions / information:** Continue card; Import CTA; item title/source/type; section progress; ready/processing/failed state; search; source-type filter; open status details; retry; delete.
+- **Actions / information:** Continue card; Import CTA to the dedicated import screen; item title/source/type; section progress; ready/processing/failed state; search; source-type filter; open status details; retry; delete.
 - **Empty:** short value statement and one `Import content` CTA. **Loading:** stable card skeletons, not a blank page. **Error:** retry Library load without hiding cached/available items. **Success:** Continue and item list.
 - **Exit:** Reader, Import, Vocabulary, Review, Progress, Profile/Settings.
 
@@ -31,12 +31,20 @@ Processing detail is an expandable card/drawer showing current stage, honest pro
 ## 4. Import
 
 - **Purpose / goal:** submit one supported private source with confidence.
-- **Entry:** Library Import CTA or empty state.
+- **Entry:** Library Import CTA or empty state; direct `/import` navigation.
 - **Actions / information:** choose enabled source; for `Paste text`, use a large multiline plain-text field with placeholder, visible character counter/limit, and paragraph-preserving paste/edit behavior; for other sources use the appropriate URL/file input; expected French language; privacy statement; validation; detected-language mismatch; submit.
 - **Empty:** source choices: Paste text, YouTube when enabled, EPUB, PDF, Markdown; the first slice opens directly with the empty paste field and does not show unavailable-source placeholders. **Loading:** submission/validation uses an explicit phase and disables duplicate submission without replacing entered text. **Error:** specific empty/over-limit/language/network error for pasted text, or source-appropriate file/URL error, with correction. **Success:** item created and return to Library status.
 - **Exit:** Library without submitting; Library item after submitting. Closing after submit does not cancel background work.
 
 Import does not include a rich-text editor, metadata editing, chapter selection, raw-audio upload, bulk import, or a dedicated processing wait screen. Pasted markup is treated as plain text rather than rendered formatting.
+
+## Book index
+
+- **Purpose / goal:** understand one imported book and choose a chapter to read.
+- **Entry:** a Library item card or a saved source link.
+- **Actions / information:** title/source type; overall readiness; Continue when a saved position exists; ordered chapter list with completion state and an accessible read icon for each ready chapter.
+- **Empty:** processing or no chapter ready message. **Loading:** preserve the shell and show a compact loading state. **Error:** safe retry/not-found message. **Success:** chapter list and scoped Reader links.
+- **Exit:** Reader for a selected chapter, Library, or primary navigation.
 
 ## 5. Reader
 
@@ -52,7 +60,7 @@ Desktop uses a non-overlapping side panel. Tablet uses a collapsible overlay dra
 
 - **Purpose / goal:** find and manage explicitly encountered words/expressions.
 - **Entry:** primary navigation, Reader contextual surface, Review summary.
-- **Actions / information:** search; filter by Learning/Known/Ignored, word/expression, and source; meaning/source snippet; occurrence count; due state; change state; Study again; open source; select/export to `.apkg`.
+- **Actions / information:** search; filter by stages 1–4/Known/Ignored, word/expression, and source; meaning/source snippet; occurrence count; due state; change state; Study again; open source; select/export to `.apkg`.
 - **Empty:** explain that items are created explicitly in Reader and link to Library. **Loading:** list skeleton retaining filters. **Error:** retry without dropping filters. **Success:** updated row/card and reversible feedback.
 - **Exit:** source Reader, Review, export dialog, primary navigation.
 

@@ -64,7 +64,7 @@ The delivery layer may compose public queries but owns no business state. Import
 - change vocabulary state;
 - undo a vocabulary state change.
 
-The key is scoped to account, operation, and route. Once a command commits, replaying the same key and canonical request returns the original result without repeating side effects. Reusing it with a different canonical request returns `409 idempotency_key_reused`. Validation responses that commit no state do not consume the key; after a user-visible correction or language-mismatch acknowledgment, the client creates a new key. Committed keys and their canonical request/result identity are retained for at least 24 hours, which is the supported client retry window; same-content import deduplication remains independent and longer lived.
+The key is scoped to account, operation, and route. Once a command commits, replaying the same key and canonical request returns the original result without repeating side effects. Reusing it with a different canonical request returns `409 idempotency_key_reused`. Validation responses that commit no state do not consume the key; after a user-visible correction, the client creates a new key. Committed keys and their canonical request/result identity are retained for at least 24 hours, which is the supported client retry window; same-content import deduplication remains independent and longer lived.
 
 Reader position and section completion use idempotent `PUT` semantics and do not require this header. Clients serialize position saves; the last committed valid position wins across devices.
 
@@ -87,15 +87,15 @@ Errors use `application/problem+json`:
 
 `referenceId` correlates safe operational evidence and exposes no stack/provider/parser detail. `fieldErrors` and optional metadata are allowlisted per error code; they never echo pasted text, vocabulary context, email-link tokens, provider payloads, or another account's identifiers.
 
-| Status | Meaning in this slice |
-| --- | --- |
-| `400` | malformed JSON, cursor, header, or route input |
-| `401` | no valid session |
-| `404` | resource absent or not owned by the session account |
-| `409` | stale/current-state conflict, stale revision, or idempotency-key misuse |
-| `422` | well-formed request violates text/language/domain validation |
-| `429` | bounded rate/quota response with safe retry guidance |
-| `503` | transient dependency/capability unavailable; prior valid state remains authoritative |
+| Status | Meaning in this slice                                                                |
+| ------ | ------------------------------------------------------------------------------------ |
+| `400`  | malformed JSON, cursor, header, or route input                                       |
+| `401`  | no valid session                                                                     |
+| `404`  | resource absent or not owned by the session account                                  |
+| `409`  | stale/current-state conflict, stale revision, or idempotency-key misuse              |
+| `422`  | well-formed request violates text/language/domain validation                         |
+| `429`  | bounded rate/quota response with safe retry guidance                                 |
+| `503`  | transient dependency/capability unavailable; prior valid state remains authoritative |
 
 Owned-resource authorization failures use `404`, not `403`, so guessed IDs do not reveal existence. A same-account duplicate is a successful import outcome, not an authorization error.
 
@@ -141,7 +141,7 @@ The server is authoritative even when the browser performs the same checks for r
 
 The pre-normalized request body is not retained. Normalization v1 is exactly steps 2–4 above and does not apply NFC/NFKC, case folding, punctuation substitution, or internal trimming. The normalized private input and normalization version form the immutable Import-owned source input; the first slice may store this bounded text transactionally in PostgreSQL and does not require object storage. Hashes are never exposed through the API or telemetry. Browser and server must share conformance vectors rather than relying on JavaScript UTF-16 `.length`.
 
-Language mismatch detection runs before state is committed. Only a policy-qualified non-French result returns `422 language_mismatch`; undetermined detection does not invent a mismatch. The error may return an allowlisted detected language code but no raw model output. Resubmission with `languageMismatchAccepted: true` records that acknowledgment with the import intent.
+Language mismatch detection runs before state is committed. A policy-qualified non-French result always returns `422 language_mismatch`; there is no client override. Undetermined detection does not invent a mismatch. The error may return an allowlisted detected language code but no raw model output. The legacy `source_revisions.language_mismatch_accepted` column remains default-false for migration compatibility and is not writable through the application contract.
 
 The expected language comes from the authenticated learning profile and is not trusted from the request body. Import without the required profile returns `409 learning_profile_required`.
 
@@ -203,26 +203,27 @@ With the accepted PostgreSQL queue, job/event insertion participates directly in
 
 This table maps HTTP delivery to owned application contracts. Exact framework handlers are intentionally unspecified.
 
-| HTTP contract | Application owner | Result |
-| --- | --- | --- |
-| `POST /api/v1/auth/email-link-requests` | Identity | uniform `202`; request accepted without account disclosure |
-| `POST /api/v1/auth/email-link-sessions` | Identity | consume provider-neutral one-time proof, establish session, return safe intended path |
-| `GET /api/v1/session` | Identity | current authenticated session or `401` |
-| `DELETE /api/v1/session` | Identity | revoke current session; `204` |
-| `GET /api/v1/me/learning-profile` | Learning profile | profile or `404 profile_not_created` |
-| `PUT /api/v1/me/learning-profile` | Learning profile | idempotently create the slice profile |
-| `POST /api/v1/imports/pasted-text` | Import process manager | `202 created`, `200 duplicate`, or validation problem |
-| `GET /api/v1/library-items` | Library composition | bounded owned items with processing and resume summaries |
-| `GET /api/v1/library-items/{libraryItemId}` | Library composition | owned item/status/capabilities |
-| `POST /api/v1/library-items/{libraryItemId}/processing-retries` | Import | accepted retry for one advertised capability |
-| `GET /api/v1/library-items/{libraryItemId}/reader` | Reader composition | bounded content window, confirmed states, saved position |
-| `PUT /api/v1/library-items/{libraryItemId}/reader-position` | Reader | authoritative confirmed semantic position |
-| `PUT /api/v1/library-items/{libraryItemId}/sections/{sectionId}/completion` | Reader | authoritative explicit completion |
-| `GET /api/v1/library-items/{libraryItemId}/occurrences/{occurrenceId}/context` | Reader composition | deterministic token/state/context plus independently degradable meaning |
-| `GET /api/v1/vocabulary-items` | Vocabulary | bounded explicit lemma-state items |
-| `POST /api/v1/vocabulary-state-changes` | Vocabulary | committed state and reversible change identity |
-| `POST /api/v1/vocabulary-state-changes/{stateChangeId}/undo` | Vocabulary | restored prior state or stale-change conflict |
-| `GET /api/v1/progress/summary` | Learning/progress | structural/self-report summary and projection freshness |
+| HTTP contract                                                                  | Application owner      | Result                                                                                |
+| ------------------------------------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------- |
+| `POST /api/v1/auth/email-link-requests`                                        | Identity               | uniform `202`; request accepted without account disclosure                            |
+| `POST /api/v1/auth/email-link-sessions`                                        | Identity               | consume provider-neutral one-time proof, establish session, return safe intended path |
+| `GET /api/v1/session`                                                          | Identity               | current authenticated session or `401`                                                |
+| `DELETE /api/v1/session`                                                       | Identity               | revoke current session; `204`                                                         |
+| `GET /api/v1/me/learning-profile`                                              | Learning profile       | profile or `404 profile_not_created`                                                  |
+| `PUT /api/v1/me/learning-profile`                                              | Learning profile       | idempotently create the slice profile                                                 |
+| `POST /api/v1/imports/pasted-text`                                             | Import process manager | `202 created`, `200 duplicate`, or validation problem                                 |
+| `GET /api/v1/library-items`                                                    | Library composition    | bounded owned items with processing and resume summaries                              |
+| `GET /api/v1/library-items/{libraryItemId}`                                    | Library composition    | owned item/status/capabilities                                                        |
+| `GET /api/v1/library-items/{libraryItemId}/book-index`                         | Library composition    | owned book summary and ordered chapter/section list                                   |
+| `POST /api/v1/library-items/{libraryItemId}/processing-retries`                | Import                 | accepted retry for one advertised capability                                          |
+| `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...`               | Reader composition     | bounded content window for the selected section, confirmed states, saved position    |
+| `PUT /api/v1/library-items/{libraryItemId}/reader-position`                    | Reader                 | authoritative confirmed semantic position                                             |
+| `PUT /api/v1/library-items/{libraryItemId}/sections/{sectionId}/completion`    | Reader                 | authoritative explicit completion                                                     |
+| `GET /api/v1/library-items/{libraryItemId}/occurrences/{occurrenceId}/context` | Reader composition     | deterministic token/state/context plus independently degradable meaning               |
+| `GET /api/v1/vocabulary-items`                                                 | Vocabulary             | bounded explicit lemma-state items                                                    |
+| `POST /api/v1/vocabulary-state-changes`                                        | Vocabulary             | committed state and reversible change identity                                        |
+| `POST /api/v1/vocabulary-state-changes/{stateChangeId}/undo`                   | Vocabulary             | restored prior state or stale-change conflict                                         |
+| `GET /api/v1/progress/summary`                                                 | Learning/progress      | structural/self-report summary and projection freshness                               |
 
 ### Authentication and profile payloads
 
@@ -245,8 +246,7 @@ Request:
 
 ```json
 {
-  "text": "Le texte français…",
-  "languageMismatchAccepted": false
+  "text": "Le texte français…"
 }
 ```
 
@@ -347,7 +347,7 @@ Context query authorizes the Library item and verifies the occurrence belongs to
 }
 ```
 
-The meaning application port receives source/target language, surface, lemma, optional POS, and the containing sentence—not the document. It returns bounded meaning text and display/license provenance. The first implementation uses the repository fixture catalog in local/test/restricted synthetic preview and returns `unavailable` outside that catalog; it makes no external request and cannot be enabled in production. There is no hidden AI/secondary fallback. A future production adapter must minimize what leaves the process: sending a private sentence or account/document identifier is forbidden until the provider's data-processing, retention, training, and license terms are explicitly approved; otherwise the request is limited to non-contextual lemma/POS data or selection runs locally. Caching/storage follows the later approved license rather than an assumed right. Every adapter has a hard deadline where applicable, classified errors, response validation, provider/dataset/selector-version telemetry, and the same deterministic contract fake. A timeout/unavailable result remains a successful context response with `meaning.status: "unavailable"`, safe reference ID, and retryability; vocabulary actions remain usable. The visible Retry action reissues this context query and may retry only the meaning sub-operation under the bounded retry/negative-cache policy—it does not rerun language analysis or vocabulary state.
+The meaning application port receives source/target language, surface, lemma, optional POS, and the containing sentence—not the document. It returns bounded meaning text and display/license provenance. An unavailable result includes a classified reason and explicit retryability. The first implementation uses the repository fixture catalog in local/test/restricted synthetic preview and returns non-retryable `not_in_fixture` outside that catalog; it makes no external request and cannot be enabled in production. There is no hidden AI/secondary fallback. A future production adapter must minimize what leaves the process: sending a private sentence or account/document identifier is forbidden until the provider's data-processing, retention, training, and license terms are explicitly approved; otherwise the request is limited to non-contextual lemma/POS data or selection runs locally. Caching/storage follows the later approved license rather than an assumed right. Every adapter has a hard deadline where applicable, classified errors, response validation, provider/dataset/selector-version telemetry, and the same deterministic contract fake. A timeout/unavailable result remains a successful context response with `meaning.status: "unavailable"`, safe reference ID, and retryability; vocabulary actions remain usable. Retry appears only when the result is classified retryable and reissues this context query without rerunning language analysis or vocabulary state.
 
 ### Vocabulary state and Undo
 
@@ -357,11 +357,11 @@ State-change request:
 {
   "libraryItemId": "lib_opaque",
   "occurrenceId": "occ_opaque",
-  "desiredState": "learning"
+  "state": "recognized"
 }
 ```
 
-Allowed states are `learning`, `known`, and `ignored`. The server resolves and authorizes the occurrence and lemma; clients cannot supply arbitrary lemma text or owner IDs. State is unique by account + learning language + lemma. Every state therefore projects to all current occurrences of that lemma; `known` remains explicitly self-reported.
+Allowed states are `new`, `recognized`, `familiar`, `learned`, `known`, and `ignored`; null means lookup-only/unclassified and is never submitted. The first four are explicit self-reported learning stages, and `learned` is not demonstrated recall. `known` remains a separate explicit self-report. The server resolves and authorizes the occurrence and lemma; clients cannot supply arbitrary lemma text or owner IDs. State is unique by account + learning language + lemma and projects to all current occurrences. Existing pre-migration `learning` values upgrade to `new`; downgrade collapses the four stages back to `learning` and therefore loses stage specificity.
 
 The committed response includes `stateChangeId`, `vocabularyItemId`, `lemmaId`, confirmed state, state `version`, source occurrence, and whether the action created or updated the item. Meaning availability is not a precondition. Repeating the idempotency key records at most one change.
 
@@ -395,7 +395,7 @@ Progress returns:
 }
 ```
 
-Counts derive only from explicit section-completion and vocabulary-state events. The projection may lag a just-confirmed write; `freshness.updating` is true when known committed events remain unapplied. The UI retains the last confirmed values and labels refresh rather than inventing immediate mastery. No reading time, exposure, recall score, streak, heatmap, or CEFR field exists in this response.
+Counts derive only from explicit section-completion and vocabulary-state events. The Progress `learning` count aggregates `new`, `recognized`, `familiar`, and `learned`; it does not imply recall. The projection may lag a just-confirmed write; `freshness.updating` is true when known committed events remain unapplied. The UI retains the last confirmed values and labels refresh rather than inventing immediate mastery. No reading time, exposure, recall score, streak, heatmap, or CEFR field exists in this response.
 
 ## Internal events and job payloads
 
@@ -411,14 +411,14 @@ Every message uses the standard event/job envelope from [background jobs](backgr
 
 ## Authorization and privacy matrix
 
-| Capability | Required scope/check |
-| --- | --- |
-| Profile | current session account only |
-| Import/duplicate | current account; duplicate lookup account-scoped |
-| Library/status/retry | item ownership before status/error details |
-| Reader/content/context/position/completion | item ownership plus locator belongs to current revision |
-| Vocabulary mutation/undo/source link | item/occurrence/change belongs to current account and French profile |
-| Progress | current account + French profile only |
+| Capability                                 | Required scope/check                                                 |
+| ------------------------------------------ | -------------------------------------------------------------------- |
+| Profile                                    | current session account only                                         |
+| Import/duplicate                           | current account; duplicate lookup account-scoped                     |
+| Library/status/retry                       | item ownership before status/error details                           |
+| Reader/content/context/position/completion | item ownership plus locator belongs to current revision              |
+| Vocabulary mutation/undo/source link       | item/occurrence/change belongs to current account and French profile |
+| Progress                                   | current account + French profile only                                |
 
 Authorization runs in every application command/query, not only route middleware. Raw pasted text, normalized text, source sentences, meanings, emails, one-time proofs, session tokens, and provider request/response bodies are prohibited in logs, traces, metrics, error reports, and job/event envelopes. Metrics use bounded source type, stage, outcome, provider/version, and error classification—not account, lemma, or document labels.
 
@@ -456,20 +456,20 @@ Do not install an OpenAPI generator, workflow engine, event broker, or contract 
 
 ## Acceptance traceability
 
-| Product scenarios | Owning contract evidence |
-| --- | --- |
-| 1 | authentication endpoints, uniform response, one-time-proof rules |
-| 2 | create-only French profile contract |
-| 3–6 | normalization/intake, validation, language acknowledgment, idempotency, account-scoped duplicate outcome |
-| 7–9 | durable workflow, capability status, stage transactions, targeted retry |
-| 10 | normalization/version/title rules, one-section content contract, scalar-value locators |
-| 11 | Reader/section transaction rules; no position/completion vocabulary or recall side effect |
-| 12–13 | contextual lookup and independently degradable meaning port |
-| 14–18 | lemma-scoped state, authoritative response, idempotency, head-safe Undo |
-| 19 | semantic locator and Reader-position conflict/resolution contract |
-| 20 | minimal event-derived Progress shape and freshness |
-| 21–22 | responsive/keyboard behavior remains UX-owned; bounded Reader/context/import contracts provide the required states and focus-safe identities |
-| 23 | authorization/privacy matrix and non-enumerating `404` rule |
+| Product scenarios | Owning contract evidence                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1                 | authentication endpoints, uniform response, one-time-proof rules                                                                             |
+| 2                 | create-only French profile contract                                                                                                          |
+| 3–6               | normalization/intake, validation, language acknowledgment, idempotency, account-scoped duplicate outcome                                     |
+| 7–9               | durable workflow, capability status, stage transactions, targeted retry                                                                      |
+| 10                | normalization/version/title rules, one-section content contract, scalar-value locators                                                       |
+| 11                | Reader/section transaction rules; no position/completion vocabulary or recall side effect                                                    |
+| 12–13             | contextual lookup and independently degradable meaning port                                                                                  |
+| 14–18             | lemma-scoped state, authoritative response, idempotency, head-safe Undo                                                                      |
+| 19                | semantic locator and Reader-position conflict/resolution contract                                                                            |
+| 20                | minimal event-derived Progress shape and freshness                                                                                           |
+| 21–22             | responsive/keyboard behavior remains UX-owned; bounded Reader/context/import contracts provide the required states and focus-safe identities |
+| 23                | authorization/privacy matrix and non-enumerating `404` rule                                                                                  |
 
 ## Implementation decisions and deferred rollout gates
 

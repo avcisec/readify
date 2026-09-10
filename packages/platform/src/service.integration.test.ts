@@ -90,7 +90,6 @@ describe("first vertical slice", () => {
     const created = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-1",
       "req-1",
     );
@@ -99,7 +98,6 @@ describe("first vertical slice", () => {
     const replay = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-1",
       "req-1",
     );
@@ -107,7 +105,6 @@ describe("first vertical slice", () => {
     const duplicate = await service.createPastedImport(
       owner.userId,
       source,
-      false,
       "import-2",
       "req-2",
     );
@@ -161,7 +158,7 @@ describe("first vertical slice", () => {
       service.changeVocabularyState(
         stranger.userId,
         occurrence!.id,
-        "learning",
+        "new",
         "stranger-change",
         "stranger-change-request",
       ),
@@ -179,14 +176,14 @@ describe("first vertical slice", () => {
     const changed = (await service.changeVocabularyState(
       owner.userId,
       occurrence!.id,
-      "learning",
+      "new",
       "vocab-1",
       "req-3",
     )) as {
       vocabularyItem: { id: string; state: string };
       stateChangeId: string;
     };
-    expect(changed.vocabularyItem.state).toBe("learning");
+    expect(changed.vocabularyItem.state).toBe("new");
     const vocabulary = await service.listVocabulary(owner.userId);
     expect(vocabulary.items).toHaveLength(1);
     expect(vocabulary.items[0]).toMatchObject({
@@ -200,9 +197,9 @@ describe("first vertical slice", () => {
       .flatMap((paragraph) => paragraph.occurrences)
       .filter((token) => token.lemmaId === occurrence!.lemmaId);
     expect(repeated.length).toBeGreaterThan(1);
-    expect(
-      repeated.every((token) => token.vocabularyState === "learning"),
-    ).toBe(true);
+    expect(repeated.every((token) => token.vocabularyState === "new")).toBe(
+      true,
+    );
     const parler = reader.paragraphs
       .flatMap((paragraph) => paragraph.occurrences)
       .find((token) => token.surface === "parlaient")!;
@@ -228,10 +225,28 @@ describe("first vertical slice", () => {
     await service.changeVocabularyState(
       owner.userId,
       parler.id,
-      "learning",
+      "recognized",
       "vocab-learning-2",
       "req-learning-2",
     );
+    await service.changeVocabularyState(
+      owner.userId,
+      parler.id,
+      "familiar",
+      "vocab-learning-3",
+      "req-learning-3",
+    );
+    await service.changeVocabularyState(
+      owner.userId,
+      parler.id,
+      "learned",
+      "vocab-learning-4",
+      "req-learning-4",
+    );
+    expect(
+      (await service.getOccurrenceContext(owner.userId, item.id, parler.id))
+        .vocabulary?.state,
+    ).toBe("learned");
     const nora = reader.paragraphs
       .flatMap((paragraph) => paragraph.occurrences)
       .find((token) => token.surface === "Nora");
@@ -290,14 +305,12 @@ describe("first vertical slice", () => {
       service.createPastedImport(
         owner.userId,
         text,
-        false,
         "race-1",
         "race-request-1",
       ),
       service.createPastedImport(
         owner.userId,
         text,
-        false,
         "race-2",
         "race-request-2",
       ),
@@ -331,7 +344,7 @@ describe("first vertical slice", () => {
     const firstChange = (await service.changeVocabularyState(
       owner.userId,
       occurrence.id,
-      "learning",
+      "new",
       "stale-1",
       "req-stale-1",
     )) as { stateChangeId: string };
@@ -370,7 +383,6 @@ describe("first vertical slice", () => {
       service.createPastedImport(
         owner.userId,
         english,
-        false,
         "language-1",
         "req-language",
       ),
@@ -381,20 +393,23 @@ describe("first vertical slice", () => {
       database,
     );
     expect(counts.rows[0]?.count).toBe("0");
-    const accepted = await service.createPastedImport(
-      owner.userId,
-      english,
-      true,
-      "language-accepted",
-      "req-language-accepted",
-    );
-    expect(accepted.status).toBe(202);
-    const acknowledgment = await sql<{
-      accepted: boolean;
-    }>`select language_mismatch_accepted as accepted from source_revisions where owner_id=${owner.userId}`.execute(
-      database,
-    );
-    expect(acknowledgment.rows[0]?.accepted).toBe(true);
+    await expect(
+      service.createPastedImport(
+        owner.userId,
+        english,
+        "language-2",
+        "req-language-2",
+      ),
+    ).rejects.toMatchObject({ code: "language_mismatch" });
+    expect(
+      (
+        await sql<{
+          count: string;
+        }>`select count(*)::text as count from source_revisions where owner_id=${owner.userId}`.execute(
+          database,
+        )
+      ).rows[0]?.count,
+    ).toBe("0");
   });
 
   it("keeps Reader available after analyzer exhaustion and supports a targeted retry", async () => {
@@ -411,7 +426,6 @@ describe("first vertical slice", () => {
     const created = await resilientService.createPastedImport(
       owner.userId,
       "Camille mange une pomme avec Nora. Elle parle avec le vendeur et choisit du pain au marché.",
-      false,
       "degraded-import",
       "degraded-request",
     );

@@ -30,18 +30,29 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await page.getByLabel("Yaklaşık seviyen").selectOption("B1");
   await page.getByRole("button", { name: "Devam et" }).click();
   await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByLabel("Öğrenme profili")).toContainText(
+    "Fransızca · B1",
+  );
+  await expect(page.locator(".library-heading .heading-action")).toBeVisible();
+  await expect(page.getByLabel("Fransızca metin")).toHaveCount(0);
 
+  await page.getByRole("link", { name: /Metin ekle/u }).click();
+  await expect(page).toHaveURL(/\/import$/);
   await page.getByLabel("Fransızca metin").fill(fixture);
   await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();
-  await expect(
-    page.getByText("Metin eklendi; arka planda hazırlanıyor."),
-  ).toBeVisible();
-  const read = page.getByRole("link", { name: "Oku" }).first();
-  await expect(read).toBeVisible();
+  await expect(page).toHaveURL(/\/library$/);
+  const openBook = page.getByRole("link", { name: "Kitabı aç" }).first();
+  await expect(openBook).toBeVisible();
   await expect(page.locator(".item-card .status").first()).not.toContainText(
     "%",
   );
+  await openBook.click();
+  await expect(page).toHaveURL(/\/library\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: "Bölümler" })).toBeVisible();
+  const read = page.getByRole("link", { name: /Bölüm 1 bölümünü oku/u });
+  await expect(read).toBeVisible();
   await read.click();
+  await expect(page).toHaveURL(/\/reader\/[^?]+\?sectionId=/);
 
   await expect(page.getByText("<bonjour>", { exact: false })).toBeVisible();
   await expect(page.locator("bonjour")).toHaveCount(0);
@@ -49,6 +60,9 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   const mange = page
     .getByRole("button", { name: "mange", exact: true })
     .first();
+  await mange.hover();
+  await expect(mange).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(mange).toHaveCSS("background-color", "rgb(0, 30, 30)");
   await mange.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
@@ -65,7 +79,7 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
         violation.impact === "critical" || violation.impact === "serious",
     ),
   ).toEqual([]);
-  const learning = page.getByRole("button", { name: "Öğreniyorum" });
+  const newState = page.getByRole("button", { name: "1 · New" });
   await page.route("**/api/v1/vocabulary-state-changes", async (route) => {
     await route.fulfill({
       status: 503,
@@ -79,34 +93,100 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
       }),
     });
   });
-  await learning.click();
-  await expect(learning).toHaveAttribute("aria-pressed", "false");
+  await newState.click();
+  await expect(newState).toHaveAttribute("aria-pressed", "false");
   await page.unroute("**/api/v1/vocabulary-state-changes");
-  await learning.click();
-  await expect(page.getByText("Öğreniyorum olarak kaydedildi.")).toBeAttached();
-  await page.getByRole("button", { name: "Son değişikliği geri al" }).click();
+  await page.keyboard.press("1");
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("1 · New olarak kaydedildi.")).toBeAttached();
+  await expect(page.getByRole("status")).toContainText("1 · New kaydedildi.");
+  await page.getByRole("button", { name: "Geri al" }).click();
   await expect(
     page.getByText("Son kelime değişikliği geri alındı."),
   ).toBeAttached();
-  await learning.click();
+  await expect(newState).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("1");
+  await page.keyboard.press("3");
+  await page.getByRole("button", { name: "Geri al" }).click();
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  for (const [key, label] of [
+    ["2", "2 · Recognised"],
+    ["3", "3 · Familiar"],
+    ["4", "4 · Learned"],
+    ["q", "Ignore · Q"],
+    ["e", "Known · E"],
+    ["1", "1 · New"],
+  ] as const) {
+    await page.keyboard.press(key);
+    const stateButton = page.getByRole("button", { name: label });
+    await expect(stateButton).toHaveAttribute("aria-pressed", "true");
+    await expect(stateButton).toBeEnabled();
+  }
+  let duplicateStateRequests = 0;
+  const countStateRequest = (request: { url(): string }) => {
+    if (request.url().includes("/api/v1/vocabulary-state-changes"))
+      duplicateStateRequests += 1;
+  };
+  page.on("request", countStateRequest);
+  await page.keyboard.press("1");
+  await page.waitForTimeout(100);
+  page.off("request", countStateRequest);
+  expect(duplicateStateRequests).toBe(0);
+
+  await page.route(
+    "**/api/v1/vocabulary-state-changes/*/undo",
+    async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          type: "urn:readify:problem:stale_state_change",
+          title: "stale_state_change",
+          status: 409,
+          code: "stale_state_change",
+          referenceId: "ref_stale_undo_browser_test",
+        }),
+      });
+    },
+  );
+  await page.getByRole("button", { name: "Geri al" }).click();
+  await expect(
+    page.getByText(
+      "Bu değişiklikten sonra başka bir işlem yapıldığı için geri alınamıyor.",
+    ),
+  ).toBeAttached();
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  await page.unroute("**/api/v1/vocabulary-state-changes/*/undo");
 
   await page.getByRole("link", { name: "Kelimeler" }).click();
   await expect(page.getByText("manger", { exact: true })).toBeVisible();
+  await expect(page.locator(".state-new")).toContainText("1 · New");
+  await page.keyboard.press("2");
+  await expect(page.locator(".state-new")).toContainText("1 · New");
   await expect(page.getByText(/kullanım/u).first()).toBeVisible();
   await page.getByRole("link", { name: "Metinde aç" }).click();
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
+  const positionSaved = page.waitForResponse(
+    (response) =>
+      response.url().includes("/reader-position") &&
+      response.request().method() === "PUT" &&
+      response.ok(),
+  );
+  await page.locator(".reader-paragraph").last().scrollIntoViewIfNeeded();
+  await positionSaved;
   await page.getByRole("link", { name: "Kütüphane" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("link", { name: "Devam et" }).first().click();
+  await page.getByRole("link", { name: "Kitabı aç" }).first().click();
+  await page.getByRole("link", { name: "Kaldığın yerden devam et" }).click();
   await expect(
     page.getByRole("button", { name: "mange", exact: true }).first(),
-  ).toHaveClass(/token-learning/u);
+  ).toHaveClass(/token-new/u);
+  await expect(page.locator(".reader-paragraph").last()).toBeInViewport();
   await page.getByRole("button", { name: "Nora", exact: true }).first().click();
+  await expect(page.getByText(/sınırlı geliştirme sözlüğünde/iu)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Anlamı yeniden dene" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Anlamı yeniden dene" }).click();
-  await expect(page.getByText(/doğrulanmış anlam/iu)).toBeVisible();
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Bölümü tamamla" }).click();
   await page.getByRole("link", { name: "İlerleme" }).click();
@@ -126,6 +206,21 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
   expect(unauthorized.status()).toBe(401);
   await signIn(page, `boundary-${test.info().project.name}@example.test`);
   await page.getByRole("button", { name: "Devam et" }).click();
+  await page.getByRole("link", { name: /Metin ekle/u }).click();
+
+  await page
+    .getByLabel("Fransızca metin")
+    .fill(
+      "This is the story of a learner and the words that are read with care from the first page. ".repeat(
+        3,
+      ),
+    );
+  await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();
+  await expect(page.getByText(/yalnızca Fransızca metin/iu)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Yine de Fransızca/iu }),
+  ).toHaveCount(0);
+  await expect(page.locator(".item-card")).toHaveCount(0);
 
   const malformed = await page.evaluate(async () => {
     const response = await fetch("/api/v1/imports/pasted-text", {
@@ -150,7 +245,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "a".repeat(530_000),
-        languageMismatchAccepted: false,
       }),
     });
     return { status: response.status, body: await response.json() };
@@ -167,7 +261,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "Bonjour au marché avec Camille et Nora. ".repeat(4),
-        languageMismatchAccepted: false,
       }),
     });
     return response.status;
@@ -182,7 +275,6 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
       },
       body: JSON.stringify({
         text: "Camille parle avec le vendeur au café. ".repeat(4),
-        languageMismatchAccepted: false,
       }),
     });
     return { status: response.status, body: await response.json() };
@@ -194,30 +286,65 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
     headers: { Origin: "https://evil.example", "Idempotency-Key": "evil" },
     data: {
       text: "Bonjour au marché. ".repeat(5),
-      languageMismatchAccepted: false,
     },
   });
   expect(crossOrigin.status()).toBe(403);
 });
 
-test("mobile Reader uses a bottom context surface", async ({ page }) => {
+test("responsive Reader stays within the viewport and adapts context", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const email = `mobile-${test.info().project.name}@example.test`;
   await signIn(page, email);
   await page.getByRole("button", { name: "Devam et" }).click();
+  await page.getByRole("link", { name: /Metin ekle/u }).click();
   await page
     .getByLabel("Fransızca metin")
     .fill(
       "Bonjour au marché. Camille mange une pomme avec Nora et parle doucement.",
     );
   await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();
-  await page.getByRole("link", { name: "Oku" }).click();
+  await page.getByRole("link", { name: "Kitabı aç" }).click();
+  await page.getByRole("link", { name: /Bölüm 1 bölümünü oku/u }).click();
   await page.getByRole("button", { name: "mange", exact: true }).click();
   const panel = page.getByRole("complementary", { name: "Kelime bağlamı" });
   await expect(panel).toBeVisible();
   await expect(panel).toHaveCSS("position", "fixed");
+  for (const width of [1024, 820, 500, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      headerWidth: document
+        .querySelector(".reader-header")!
+        .getBoundingClientRect().width,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+    expect(dimensions.headerWidth).toBeCloseTo(dimensions.clientWidth, 0);
+  }
+  await page.setViewportSize({ width: 820, height: 844 });
+  await expect(panel).toHaveCSS("right", "16px");
+  await page.setViewportSize({ width: 500, height: 844 });
+  await expect(panel).toHaveCSS("bottom", "0px");
   await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "mange", exact: true }),
   ).toBeFocused();
+});
+
+test("tablet and mobile widths use labeled bottom navigation", async ({
+  page,
+}) => {
+  await signIn(page, `responsive-nav-${test.info().project.name}@example.test`);
+  await page.getByRole("button", { name: "Devam et" }).click();
+
+  for (const width of [1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const navigation = page.locator(".app-sidebar");
+    const box = await navigation.boundingBox();
+    expect(box?.width).toBeCloseTo(width, 0);
+    expect(box?.y).toBeGreaterThan(700);
+    await expect(page.getByRole("link", { name: "Kütüphane" })).toBeVisible();
+  }
 });

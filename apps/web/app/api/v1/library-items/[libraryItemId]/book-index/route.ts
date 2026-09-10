@@ -15,10 +15,8 @@ export async function GET(
   try {
     const identity = await currentIdentity();
     const { libraryItemId } = await context.params;
-    const sectionId =
-      request.nextUrl.searchParams.get("sectionId") ?? undefined;
     return ok(
-      await service.getReader(identity.userId, libraryItemId, sectionId),
+      await service.getBookIndex(identity.userId, libraryItemId),
       200,
       correlationId,
     );

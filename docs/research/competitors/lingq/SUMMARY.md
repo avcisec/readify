@@ -74,11 +74,11 @@ Onaysız bulk Known completion, yalnız renkle status, gürültülü çok dilli 
 
 ## 14. Farklılaşma fırsatları
 
-Üç öncelik: (a) exposure/known/recall metriklerini dürüst ayırmak, (b) A2/B1 için bilinmeyen oranı ve öneri nedenini açıklamak, (c) sync confidence + kolay manuel düzeltmeyle güvenilir audio-text ilişkisi kurmak. [16_OPPORTUNITIES_AND_DIFFERENTIATION.md](16_OPPORTUNITIES_AND_DIFFERENTIATION.md)
+Üç öncelik: (a) exposure/known/recall metriklerini dürüst ayırmak, (b) A2/B1 için bilinmeyen oranı ve öneri nedenini açıklamak, (c) sync confidence + kolay manuel düzeltmeyle güvenilir audio-text ilişkisi kurmak.
 
 ## 15. Önerilen MVP
 
-Fransızca text+audio lesson, token/phrase seçimi, source sentence, cümle segmentli player, geri alınabilir status, kısa recall review, dürüst progress ve uygun yeni input önerisi. Private type/paste import, CSV, TTS fallback ve mobil polish MVP Plus; community, tutor, streaming import, word karaoke, AI chat ve offline Post-MVP. [17_MVP_RECOMMENDATION.md](17_MVP_RECOMMENDATION.md)
+Fransızca text+audio lesson, token/phrase seçimi, source sentence, cümle segmentli player, geri alınabilir status, kısa recall review, dürüst progress ve uygun yeni input önerisi. Private type/paste import, CSV, TTS fallback ve mobil polish MVP Plus; community, tutor, streaming import, word karaoke, AI chat ve offline Post-MVP.
 
 ## 16. En riskli teknik konular
 
@@ -86,7 +86,7 @@ Transcript/audio alignment; lemma–çekim ve phrase çözümleme; anlam öneris
 
 ## 17. Cevaplanmamış sorular
 
-21. vocabulary paywall'ı, onboarding'in gerçek sırası, çoklu dil progress'i, import hata/limitleri, mobile background audio, challenge/leaderboard, subscription cancellation/export ve alignment düzenleme akışı açık kaldı. [18_OPEN_QUESTIONS_AND_FOLLOWUPS.md](18_OPEN_QUESTIONS_AND_FOLLOWUPS.md)
+Vocabulary paywall'ı, onboarding'in gerçek sırası, çoklu dil progress'i, import hata/limitleri, mobile background audio, challenge/leaderboard, subscription cancellation/export ve alignment düzenleme akışı açık kaldı. Bunlar güncel ürün belgelerine taşınmadıkça gereksinim değildir.
 
 ## 18. Sonraki araştırılması gereken rakipler/testler
 
@@ -116,4 +116,4 @@ Transcript/audio alignment; lemma–çekim ve phrase çözümleme; anlam öneris
 - AI chat/grammar paketi ve çoklu ses sağlayıcısı.
 - Onaysız completion bulk işlemleri veya coins'i ana başarı metriği yapmak.
 
-**Kanıt politikası:** Bu karar özeti T3 Browser gözlemleri ve kontrollü tek kısa ders deneyine dayanır. Ekran görüntüsü dosyası üretilemedi; tüm referanslar [EVIDENCE_INDEX.md](EVIDENCE_INDEX.md)'de metinsel kanıt olarak listelendi. Kişisel veri, ödeme, trial, booking, public paylaşım ve yıkıcı hesap işlemi yapılmadı.
+**Kanıt politikası:** Bu karar özeti T3 Browser gözlemleri ve kontrollü tek kısa ders deneyine dayanır. `LQ-*` referanslarının ayrıntılı metinsel kanıtı Git etiketi `research-baseline-2026-09` altında arşivlenmiştir. Ekran görüntüsü dosyası üretilemedi; kişisel veri, ödeme, trial, booking, public paylaşım ve yıkıcı hesap işlemi yapılmadı.

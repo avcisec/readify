@@ -54,7 +54,7 @@ export default function ProgressPage() {
             </article>
             <article>
               <strong>{summary.vocabulary.learning}</strong>
-              <span>Öğreniyorum</span>
+              <span>1–4 aşamasındaki kelimeler</span>
             </article>
             <article>
               <strong>{summary.vocabulary.known}</strong>

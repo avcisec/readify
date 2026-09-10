@@ -11,21 +11,32 @@ type VocabularyItem = {
   lemma: string;
   firstSurface: string;
   partOfSpeech: string;
-  state: "learning" | "known" | "ignored";
+  state: "new" | "recognized" | "familiar" | "learned" | "known" | "ignored";
   firstSentence: string;
   occurrenceCount: number;
   source: { libraryItemId: string; occurrenceId: string };
-  meaning: {
-    availability: "available" | "unavailable";
-    meaning?: string;
-    source: string;
-    datasetVersion: string;
-  };
+  meaning:
+    | {
+        availability: "available";
+        meaning: string;
+        source: string;
+        datasetVersion: string;
+      }
+    | {
+        availability: "unavailable";
+        source: string;
+        datasetVersion: string;
+        reason: "not_in_fixture" | "temporarily_unavailable";
+        retryable: boolean;
+      };
 };
 const labels = {
-  learning: "Öğreniyorum",
-  known: "Biliyorum",
-  ignored: "Yoksay",
+  new: "1 · New",
+  recognized: "2 · Recognised",
+  familiar: "3 · Familiar",
+  learned: "4 · Learned",
+  known: "Known",
+  ignored: "Ignore",
 };
 
 export default function VocabularyPage() {
@@ -82,7 +93,11 @@ export default function VocabularyPage() {
                       {item.meaning.source}
                     </span>
                   ) : (
-                    <span>Doğrulanmış anlam yok</span>
+                    <span>
+                      {item.meaning.reason === "not_in_fixture"
+                        ? "Sınırlı geliştirme sözlüğünde yok; gerçek sözlük henüz bağlı değil."
+                        : "Anlam kaynağına şu an ulaşılamıyor."}
+                    </span>
                   )}
                   <Link
                     href={`/reader/${item.source.libraryItemId}#occurrence-${item.source.occurrenceId}`}

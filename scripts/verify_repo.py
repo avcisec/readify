@@ -24,9 +24,7 @@ REQUIRED_FILES = {
     "AGENTS.md",
     "ARCHITECTURE.md",
     "docs/product/README.md",
-    "docs/product/vision.md",
     "docs/product/mvp-scope.md",
-    "docs/product/non-goals.md",
     "docs/product/user-flows.md",
     "docs/product/screen-inventory.md",
     "docs/product/interaction-model.md",
@@ -62,7 +60,6 @@ REQUIRED_FILES = {
     "docs/product-specs/README.md",
     "docs/product-specs/pasted-text-reader-learning-loop.md",
     "docs/exec-plans/README.md",
-    "docs/exec-plans/active/README.md",
     "docs/exec-plans/completed/README.md",
 }
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
@@ -174,8 +171,54 @@ def check_docs() -> None:
                 continue
             if not (path.parent / clean_target).resolve().exists():
                 errors.append(f"{path.relative_to(ROOT)}: missing link target {target}")
+    errors.extend(documentation_context_errors())
     if errors:
         raise Failure("\n".join(errors))
+
+
+def documentation_context_errors(root: Path = ROOT) -> list[str]:
+    errors: list[str] = []
+    agents = root / "AGENTS.md"
+    if agents.is_file():
+        text = agents.read_text(encoding="utf-8")
+        if len(text.splitlines()) > 80:
+            errors.append("AGENTS.md: operational router exceeds 80 lines")
+        for marker in ("## Task routing", "Never bulk-read", "relevant active plan"):
+            if marker.casefold() not in text.casefold():
+                errors.append(f"AGENTS.md: missing context-routing rule {marker}")
+
+    active = root / "docs/exec-plans/active"
+    active_plans = sorted(active.glob("*.md")) if active.is_dir() else []
+    if len(active_plans) > 3:
+        errors.append(
+            f"docs/exec-plans/active: {len(active_plans)} plans exceed the context budget of 3"
+        )
+
+    completed = root / "docs/exec-plans/completed"
+    completed_details = (
+        sorted(path for path in completed.glob("*.md") if path.name != "README.md")
+        if completed.is_dir()
+        else []
+    )
+    if completed_details:
+        rendered = ", ".join(path.name for path in completed_details)
+        errors.append(
+            "docs/exec-plans/completed: summarize accepted plans in README.md; "
+            f"historical detail belongs in Git ({rendered})"
+        )
+
+    docs = root / "docs"
+    if docs.is_dir():
+        for path in docs.rglob("*.md"):
+            relative = path.relative_to(docs)
+            if relative.parts[0] in {"research"} or relative.as_posix() == "exec-plans/completed/README.md":
+                continue
+            lines = len(path.read_text(encoding="utf-8").splitlines())
+            if lines > 500:
+                errors.append(
+                    f"docs/{relative.as_posix()}: {lines} lines exceed the active-document budget of 500; split by owning concern"
+                )
+    return errors
 
 
 def check_product() -> None:

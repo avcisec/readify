@@ -4,5 +4,12 @@ Use a plan for non-trivial feature, refactor, migration, or maintenance work. A 
 
 Include goal and source links, non-goals, assumptions/open decisions, affected domains/contracts, security/operations/migration risks, ordered steps, test/observability changes, acceptance criteria, verification commands, rollout/recovery, and reviewer findings/resolution.
 
-Create it in `active/` before implementation. Keep it current when reality changes. After acceptance and a final `PASS`, summarize the outcome and move it to `completed/`. Trivial isolated edits do not need plans.
+Create it in `active/` before implementation and keep it current when reality changes. After acceptance and a final `PASS`, append one outcome row to `completed/README.md`, then remove the active file; Git preserves its full history. Keep a separate completed document only while it owns an active recovery procedure or incident record. Trivial isolated edits do not need plans.
 
+## Active plans
+
+- [First vertical slice implementation](active/2026-09-01-first-vertical-slice-implementation.md) — implementation complete; external acceptance gates remain.
+- [Book index and dedicated import surface](active/2026-09-10-book-index-and-import-surface.md) — implementation verification complete; acceptance pending.
+- [Documentation context optimization](active/2026-09-10-documentation-context-optimization.md) — active.
+
+Agents read only the plan for their current task. [Completed history](completed/README.md) is not part of the default implementation context.

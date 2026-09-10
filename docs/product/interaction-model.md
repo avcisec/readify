@@ -12,16 +12,16 @@ This document owns cross-screen interaction behavior for the declared MVP. It re
 
 ## Where actions live
 
-| Interaction form | MVP use |
-| --- | --- |
-| One-click/tap | play/pause, ±5 seconds, repeat sentence, Learning/Known/Ignore, Add card, Undo, Continue, answer rating |
-| Inline | validation, save status, processing progress, sync quality/state, recoverable error, section progress |
-| Contextual surface | word/expression meaning, source sentence, pronunciation, current state, translation provenance, grammar details |
-| Side panel / drawer / bottom sheet | the contextual surface: side panel on desktop, drawer on tablet, bottom sheet on mobile |
-| Modal dialog | destructive deletion and `.apkg` export confirmation |
-| Separate screen | Import, Vocabulary management, focused Review, Progress, Profile/Settings |
+| Interaction form                   | MVP use                                                                                                         |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| One-click/tap                      | play/pause, ±5 seconds, repeat sentence, vocabulary stage/Known/Ignore, Add card, Undo, Continue, answer rating |
+| Inline                             | validation, save status, processing progress, sync quality/state, recoverable error, section progress           |
+| Contextual surface                 | word/expression meaning, source sentence, pronunciation, current state, translation provenance, grammar details |
+| Side panel / drawer / bottom sheet | the contextual surface: side panel on desktop, drawer on tablet, bottom sheet on mobile                         |
+| Modal dialog                       | destructive deletion and `.apkg` export confirmation                                                            |
+| Separate screen                    | Import, Vocabulary management, focused Review, Progress, Profile/Settings                                       |
 
-Do not use a modal for ordinary word lookup, import progress, provider failure, or Reader settings.
+Do not use a modal for ordinary word lookup, import progress, provider failure, or Reader settings. Import is a dedicated screen so the Library remains focused on choosing content.
 
 ## Reader layout
 
@@ -62,11 +62,11 @@ click/tap/focus token
 → contextual surface opens with skeleton/loading state
 → show surface form + lemma + current explicit state
 → show one preferred contextual meaning and source/provenance
-→ optional actions: Learning | Known | Ignore | Add card
+→ optional actions: 1 New | 2 Recognised | 3 Familiar | 4 Learned | Known | Ignore
 → optional detail: pronunciation, morphology/POS, grammar in sentence, occurrences
 ```
 
-Lookup failure leaves the token selected and offers Retry; already available state and deterministic annotation remain visible. Selecting another token replaces the panel content without stacking panels.
+Lookup failure leaves the token selected; already available state and deterministic annotation remain visible. Retry appears only for a failure classified as retryable. Selecting another token replaces the panel content without stacking panels.
 
 ### Expression
 
@@ -74,30 +74,35 @@ The learner uses normal text selection, then chooses `Use expression` from a sma
 
 ### Common actions
 
-- **Learning:** creates/updates the vocabulary item explicitly and preserves the occurrence.
+- **1–4 learning stages:** explicitly create/update the vocabulary item from New through Learned and preserve the occurrence. Learned remains self-reported familiarity, not demonstrated recall.
 - **Known:** applies to the lemma and its forms, clearly says `Applies to this lemma`, pauses existing cards, and is reversible.
 - **Ignore:** removes a proper name/noise item from learning treatment without claiming knowledge.
-- **Add card:** explicitly saves the selected word/expression when needed and adds it to review; it does not silently change Learning/Known/Ignored.
+- **Add card:** explicitly saves the selected word/expression when needed and adds it to review; it does not silently change its vocabulary state.
 - **Undo:** appears immediately in the context surface and transient confirmation; undo restores inherited occurrence presentation.
 
 State saves optimistically only when the UI can show pending state. Failure restores the confirmed state and offers Retry; it never leaves an ambiguous half-saved highlight.
 
 ## Vocabulary text states
 
-Use only the state model already defined by product truth:
+The editable vocabulary states are:
 
-| State | Meaning | Reader treatment |
-| --- | --- | --- |
-| New / unclassified | no explicit learner decision yet | subtle distinguishable token treatment; explicit `New` label in context surface |
-| Learning | learner chose to study it | persistent emphasis distinguishable without color alone |
-| Known | reversible self-report at lemma level | neutral text; context surface/accessible name states Known |
-| Ignored | excluded noise/proper name | neutral text; context surface states Ignored |
+| State          | Meaning                                           | Reader treatment                                           |
+| -------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| Unclassified   | lookup only; no explicit learner decision         | subtle token treatment; not stored in Vocabulary           |
+| 1 · New        | explicitly saved as new                           | first-stage persistent emphasis                            |
+| 2 · Recognised | learner recognizes it                             | second-stage persistent emphasis                           |
+| 3 · Familiar   | learner reports strong familiarity                | third-stage persistent emphasis                            |
+| 4 · Learned    | highest learning stage, still not recall evidence | fourth-stage persistent emphasis                           |
+| Known          | reversible self-report at lemma level             | neutral text; context surface/accessible name states Known |
+| Ignored        | excluded noise/proper name                        | neutral text; context surface states Ignored               |
+
+While the context surface is open, `1`–`4` select the matching stage, `Q` selects Ignore, and `E` selects Known. Shortcuts never fire from editable controls or with modifier keys.
 
 “Unseen” is an exposure/analytics fact, not another vocabulary state or permanent visual style. Recall Confirmed is a derived learning result shown in Vocabulary/Progress, not a Reader editing state. Every state uses text plus icon/underline/pattern where displayed; color is supplementary.
 
 ## Reading and resume state
 
-Persist at safe checkpoints and on navigation/backgrounding:
+Persist at debounced semantic scroll checkpoints and on navigation/backgrounding, even when the learner never opens a word:
 
 - Library item and current document revision;
 - chapter/section and stable paragraph/sentence anchor;
@@ -148,12 +153,12 @@ Review uses only explicit cards and records each rating once. Recognition, conte
 
 ## Import interaction model
 
-The Import wizard has two visible steps, not a long technical pipeline:
+The Import screen keeps the paste flow focused:
 
-1. **Choose source:** enabled source type plus URL/file.
-2. **Validate and submit:** supported-format/limit result, expected language, mismatch acknowledgment, private-by-default notice, Submit.
+1. **Open import screen:** Library CTA navigates to `/import`.
+2. **Validate and submit:** pasted text limit/result, expected language, blocking high-confidence mismatch guidance, private-by-default notice, Submit.
 
-After submission, Library owns progress. User-facing stages use stable language such as `Queued`, `Preparing text`, `Analyzing language`, `Preparing audio`, `Synchronizing`, `Ready to read`, `Ready`, and `Failed`; internal provider names stay in details only when useful. Progress is determinate only when the system knows a reliable total.
+After submission, Library owns progress. Each item opens a book index that lists its persisted sections as ordered chapters. User-facing stages use stable language such as `Queued`, `Preparing text`, `Analyzing language`, `Preparing audio`, `Synchronizing`, `Ready to read`, `Ready`, and `Failed`; internal provider names stay in details only when useful. Progress is determinate only when the system knows a reliable total.
 
 Partial readiness prioritizes opening valid text. Optional processing states attach to capabilities (`Audio processing`, `Word sync unavailable`) rather than leaving the entire item indefinitely “processing.” Retry is stage-aware but presented as one user action.
 
@@ -169,16 +174,16 @@ Daily Learning Score, goal, streak, heatmap, periods, totals/change, assistance,
 
 ## Responsive structure
 
-| Surface | Desktop | Tablet | Mobile |
-| --- | --- | --- | --- |
-| App shell | persistent side/top navigation | compact navigation | bottom navigation; account in header/menu |
-| Library | Continue + multi-column/list cards | reduced columns | stacked cards; full-width Import CTA |
-| Import | centered step form | same flow | single column; native file picker; no drag-only dependency |
-| Reader content | centered text + non-overlap side panel | text + overlay/collapsible drawer | full-width text; bottom sheet; Reader-specific header |
-| Player | full compact bar | compact bar | fixed compact bar above bottom edge; expanded controls on demand |
-| Vocabulary | table/list with source snippet | reduced columns | cards/accordion; filters in drawer |
-| Review | centered focused card | same | full-width card; large answer targets |
-| Progress | grouped cards/charts | two/one columns | stacked groups; tables become labeled cards |
+| Surface        | Desktop                                | Tablet                            | Mobile                                                           |
+| -------------- | -------------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| App shell      | persistent side navigation             | labeled bottom navigation         | labeled bottom navigation; account in header/menu                |
+| Library        | Continue + multi-column/list cards     | reduced columns                   | stacked cards; full-width Import CTA                             |
+| Import         | centered step form                     | same flow                         | single column; native file picker; no drag-only dependency       |
+| Reader content | centered text + non-overlap side panel | text + overlay/collapsible drawer | full-width text; bottom sheet; Reader-specific header            |
+| Player         | full compact bar                       | compact bar                       | fixed compact bar above bottom edge; expanded controls on demand |
+| Vocabulary     | table/list with source snippet         | reduced columns                   | cards/accordion; filters in drawer                               |
+| Review         | centered focused card                  | same                              | full-width card; large answer targets                            |
+| Progress       | grouped cards/charts                   | two/one columns                   | stacked groups; tables become labeled cards                      |
 
 Opening the mobile bottom sheet must not hide the selected sentence behind both sheet and player; it has collapsed/half/full states and can be dismissed with Back/Escape or a labeled control.
 
@@ -190,12 +195,12 @@ Opening the mobile bottom sheet must not hide the selected sentence behind both 
 - Dialogs alone trap focus. Drawers/bottom sheets have headings, labeled close controls, and predictable Escape/Back behavior.
 - Touch targets are at least comfortably tappable and answer/state buttons are not color-only.
 - Text supports browser zoom and resizing, readable line length, sufficient contrast, and no fixed-height clipping.
-- Active sentence/word, Learning/Known/Ignored, errors, and review feedback have non-color cues.
+- Active sentence/word, every vocabulary state, errors, and review feedback have non-color cues.
 - Auto-scroll honors reduced motion; media has semantic control names and exposed time/status.
 
 ## Deferred UX
 
-Follow the priority owner in [FEATURES.md](../../FEATURES.md) and the consolidated [non-goals](non-goals.md). In particular, do not surface disabled placeholders for:
+Follow the priority owner in [FEATURES.md](../../FEATURES.md) and the consolidated [MVP scope and non-goals](mvp-scope.md). In particular, do not surface disabled placeholders for:
 
 - **Plus:** favorites, playlists/history, next-input recommendation, import cancellation/preview/chapter selection/metadata editing, transcript/OCR editing, bulk vocabulary changes, card editing, export history/options, continuous play/download/regeneration, font/theme customization, reports, or source difficulty trends;
 - **Later:** standalone audio/podcast/RSS/DOCX/bulk import, public Library/community/tutors/social/gamification, speaking/writing feedback, voice cloning/design, multi-language guarantees, or offline-native behavior.

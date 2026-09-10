@@ -14,6 +14,15 @@ export type LibraryItemView = {
   hasSavedPosition: boolean;
   processing: ProcessingStatus;
 };
+export type BookIndexView = LibraryItemView & {
+  chapters: Array<{
+    id: string;
+    ordinal: number;
+    title: string;
+    completed: boolean;
+    readerAvailable: boolean;
+  }>;
+};
 export type ImportCommandResult = {
   status: number;
   body: {
@@ -143,7 +152,6 @@ export interface ImportApplication {
   createPastedImport(
     userId: string,
     text: string,
-    mismatchAccepted: boolean,
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult>;
@@ -161,10 +169,15 @@ export interface LibraryApplication {
     userId: string,
   ): Promise<{ items: LibraryItemView[]; nextCursor: null }>;
   getLibraryItem(userId: string, itemId: string): Promise<LibraryItemView>;
+  getBookIndex(userId: string, itemId: string): Promise<BookIndexView>;
 }
 
 export interface ReaderApplication {
-  getReader(userId: string, itemId: string): Promise<ReaderView>;
+  getReader(
+    userId: string,
+    itemId: string,
+    sectionId?: string,
+  ): Promise<ReaderView>;
   saveReaderPosition(
     userId: string,
     itemId: string,

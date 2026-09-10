@@ -18,10 +18,10 @@ Desktop uses persistent primary navigation. Mobile uses bottom navigation for Li
 
 ```text
 authenticate/onboard
-→ import private content or resume an item
+→ open a book index, import private content, or resume an item
 → read and/or listen in Reader
 → inspect an unknown word/expression in context
-→ explicitly set Learning/Known/Ignored or add a card
+→ explicitly set stage 1–4/Known/Ignored or add a card
 → continue without leaving Reader
 → later review due cards
 → return to the source or Library
@@ -47,16 +47,16 @@ Authentication mechanism and launch interface language remain open. Onboarding a
 ## Import and prepare content
 
 ```text
-Library → Import
+Library → Import screen
 → choose Paste text, YouTube (when enabled), EPUB, PDF, or Markdown
 → paste/edit plain text, provide URL, or choose a file as appropriate
 → immediate source-specific validation
-→ confirm expected learning language; acknowledge mismatch if detected
+→ confirm expected learning language; correct a high-confidence mismatch if detected
 → submit private import
 → Library item appears immediately with stage/progress
 → leave page or continue using app while work continues
 → first usable section ready?
-     yes → Open Reader, with optional enrichment still processing
+     yes → Open book index → choose a chapter → Reader
      no  → continue status
 → ready / partial failure / failed
 ```
@@ -93,14 +93,14 @@ Deleting an import is a destructive confirmation and returns to Library. Favorit
 ## Reader: consume and interact
 
 ```text
-open/continue item
+open book index → choose chapter / Continue
 → restore section, view, text anchor, selected sentence, and playback position
 → read Page View or focus Sentence View
 → optional play
 → select word or expression
 → contextual surface opens without navigating away
 → lookup loading → contextual result/failure
-→ optional one-click Learning / Known / Ignore / Add card
+→ optional one-click 1–4 / Known / Ignore / Add card
 → mutation saved; Undo remains available
 → dismiss/continue reading
 ```
