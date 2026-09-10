@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly readify_test_db_port="${READIFY_TEST_DB_PORT:-55432}"
+
 docker compose up -d postgres-test
 cleanup() {
   docker compose stop postgres-test >/dev/null
@@ -11,6 +13,6 @@ until docker compose exec -T postgres-test pg_isready -U readify -d readify_test
   sleep 1
 done
 
-export DATABASE_URL="postgresql://readify:readify@127.0.0.1:55432/readify_test"
+export DATABASE_URL="postgresql://readify:readify@127.0.0.1:${readify_test_db_port}/readify_test"
 pnpm --filter @readify/platform migrate:reset
 pnpm vitest run packages/platform/src/service.integration.test.ts

@@ -44,6 +44,8 @@ pnpm exec playwright install --with-deps chromium firefox webkit
 
 CI performs this step explicitly; missing host libraries must not be mistaken for an application-test failure.
 
+The disposable test database uses loopback port `55432` by default. When that port is unavailable, run verification with an explicit free port, for example `READIFY_TEST_DB_PORT=55433 make e2e`; the same override works with `make verify`.
+
 ## Local development
 
 Prerequisites are the pinned Node version, Corepack, Docker, and Python 3.12. Then:

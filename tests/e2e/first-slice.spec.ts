@@ -21,38 +21,64 @@ async function signIn(page: Page, email: string) {
   await page.keyboard.press("Enter");
 }
 
-test("pasted text → Reader → Vocabulary → resume → Progress", async ({
-  page,
-}) => {
-  const email = `learner-${test.info().project.name}@example.test`;
+function emailForAttempt(scope: string) {
+  const info = test.info();
+  return `${scope}-${info.project.name}-repeat${info.repeatEachIndex}-retry${info.retry}@example.test`;
+}
+
+async function completeOnboarding(page: Page, email: string) {
   await signIn(page, email);
   await expect(page).toHaveURL(/\/onboarding$/);
   await page.getByLabel("Yaklaşık seviyen").selectOption("B1");
   await page.getByRole("button", { name: "Devam et" }).click();
   await expect(page).toHaveURL(/\/library$/);
-  await expect(page.getByLabel("Öğrenme profili")).toContainText(
-    "Fransızca · B1",
-  );
-  await expect(page.locator(".library-heading .heading-action")).toBeVisible();
-  await expect(page.getByLabel("Fransızca metin")).toHaveCount(0);
+}
 
+async function importFixture(page: Page) {
   await page.getByRole("link", { name: /Metin ekle/u }).click();
   await expect(page).toHaveURL(/\/import$/);
   await page.getByLabel("Fransızca metin").fill(fixture);
   await page.getByRole("button", { name: "Kütüphaneye ekle" }).click();
   await expect(page).toHaveURL(/\/library$/);
-  const openBook = page.getByRole("link", { name: "Kitabı aç" }).first();
-  await expect(openBook).toBeVisible();
-  await expect(page.locator(".item-card .status").first()).not.toContainText(
-    "%",
-  );
-  await openBook.click();
+  await expect(
+    page.getByRole("link", { name: "Kitabı aç" }).first(),
+  ).toBeVisible();
+}
+
+async function openFirstReader(page: Page) {
+  await page.getByRole("link", { name: "Kitabı aç" }).first().click();
   await expect(page).toHaveURL(/\/library\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Bölümler" })).toBeVisible();
   const read = page.getByRole("link", { name: /Bölüm 1 bölümünü oku/u });
   await expect(read).toBeVisible();
   await read.click();
   await expect(page).toHaveURL(/\/reader\/[^?]+\?sectionId=/);
+}
+
+async function createFixtureReader(page: Page, scope: string) {
+  const email = emailForAttempt(scope);
+  await completeOnboarding(page, email);
+  await importFixture(page);
+  await openFirstReader(page);
+  return email;
+}
+
+test("onboarding → pasted text → Reader keeps lookup in context", async ({
+  page,
+}) => {
+  const email = emailForAttempt("reader");
+  await completeOnboarding(page, email);
+  await expect(page.getByLabel("Öğrenme profili")).toContainText(
+    "Fransızca · B1",
+  );
+  await expect(page.locator(".library-heading .heading-action")).toBeVisible();
+  await expect(page.getByLabel("Fransızca metin")).toHaveCount(0);
+
+  await importFixture(page);
+  await expect(page.locator(".item-card .status").first()).not.toContainText(
+    "%",
+  );
+  await openFirstReader(page);
 
   await expect(page.getByText("<bonjour>", { exact: false })).toBeVisible();
   await expect(page.locator("bonjour")).toHaveCount(0);
@@ -79,6 +105,17 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
         violation.impact === "critical" || violation.impact === "serious",
     ),
   ).toEqual([]);
+});
+
+test("Reader vocabulary stages and Undo remain explicit", async ({ page }) => {
+  await createFixtureReader(page, "vocabulary");
+  const mange = page
+    .getByRole("button", { name: "mange", exact: true })
+    .first();
+  await mange.click();
+  await expect(
+    page.getByRole("heading", { name: "mange", exact: true }),
+  ).toBeFocused();
   const newState = page.getByRole("button", { name: "1 · New" });
   await page.route("**/api/v1/vocabulary-state-changes", async (route) => {
     await route.fulfill({
@@ -164,6 +201,24 @@ test("pasted text → Reader → Vocabulary → resume → Progress", async ({
   await page.keyboard.press("2");
   await expect(page.locator(".state-new")).toContainText("1 · New");
   await expect(page.getByText(/kullanım/u).first()).toBeVisible();
+});
+
+test("semantic resume, progress, and vocabulary survive a new session", async ({
+  page,
+}) => {
+  const email = await createFixtureReader(page, "resume");
+  await page
+    .getByRole("button", { name: "mange", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "mange", exact: true }),
+  ).toBeFocused();
+  const newState = page.getByRole("button", { name: "1 · New" });
+  await page.keyboard.press("1");
+  await expect(newState).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: "Kelimeler" }).click();
+  await expect(page.getByText("manger", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Metinde aç" }).click();
   await expect(page.locator(".reader-token:focus")).toHaveCount(1);
   const positionSaved = page.waitForResponse(
@@ -204,7 +259,7 @@ test("HTTP boundary rejects malformed, oversized, replay-conflicting and cross-o
 }) => {
   const unauthorized = await page.request.get("/api/v1/library-items");
   expect(unauthorized.status()).toBe(401);
-  await signIn(page, `boundary-${test.info().project.name}@example.test`);
+  await signIn(page, emailForAttempt("boundary"));
   await page.getByRole("button", { name: "Devam et" }).click();
   await page.getByRole("link", { name: /Metin ekle/u }).click();
 
@@ -295,7 +350,7 @@ test("responsive Reader stays within the viewport and adapts context", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const email = `mobile-${test.info().project.name}@example.test`;
+  const email = emailForAttempt("mobile");
   await signIn(page, email);
   await page.getByRole("button", { name: "Devam et" }).click();
   await page.getByRole("link", { name: /Metin ekle/u }).click();
@@ -336,7 +391,7 @@ test("responsive Reader stays within the viewport and adapts context", async ({
 test("tablet and mobile widths use labeled bottom navigation", async ({
   page,
 }) => {
-  await signIn(page, `responsive-nav-${test.info().project.name}@example.test`);
+  await signIn(page, emailForAttempt("responsive-nav"));
   await page.getByRole("button", { name: "Devam et" }).click();
 
   for (const width of [1024, 768, 390]) {

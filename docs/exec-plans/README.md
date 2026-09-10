@@ -10,6 +10,6 @@ Create it in `active/` before implementation and keep it current when reality ch
 
 - [First vertical slice implementation](active/2026-09-01-first-vertical-slice-implementation.md) — implementation complete; external acceptance gates remain.
 - [Book index and dedicated import surface](active/2026-09-10-book-index-and-import-surface.md) — implementation verification complete; acceptance pending.
-- [Documentation context optimization](active/2026-09-10-documentation-context-optimization.md) — active.
+- [E2E CI reliability](active/2026-09-10-e2e-ci-reliability.md) — active.
 
 Agents read only the plan for their current task. [Completed history](completed/README.md) is not part of the default implementation context.
