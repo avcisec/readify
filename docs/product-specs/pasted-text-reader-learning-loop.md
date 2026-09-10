@@ -145,7 +145,7 @@ The slice does not show active study time, words exposed, Learning Score, daily 
 
 ## Out of scope for this slice
 
-- TXT file upload, EPUB, PDF, Markdown, YouTube, subtitles/transcripts, standalone audio, multiple/bulk imports, metadata editing, cancellation, deletion, and Library search/filter.
+- Markdown, YouTube, subtitles/transcripts, standalone audio, multiple/bulk imports, metadata editing, cancellation, deletion, and Library search/filter. PDF and EPUB file import are defined by the [file import plan](../exec-plans/active/2026-09-10-file-import-and-chapter-extraction.md); audiobook attachment remains deferred.
 - Audio, TTS, playback, synchronization, karaoke, Sentence View, expression selection, translation, advanced linguistic display, and AI-generated help.
 - Add card, Review/SRS, Recall Confirmed, `.apkg`, progress scoring/time/exposure, goals/streak, heatmap, and CEFR.
 - Interface-language switching, multiple learning languages, themes/fonts, offline behavior, public content, social/community, tutor, or monetization features.
