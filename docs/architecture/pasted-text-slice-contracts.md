@@ -10,7 +10,7 @@ This document owns the first slice's application and browser/API contracts. It d
 ## Slice guardrails
 
 - One authenticated account has one French learning profile in this slice.
-- One submission contains bounded pasted plain text. TXT/file upload is not an alternate path.
+- The original slice contains bounded pasted plain text. PDF and EPUB upload are additive file-source paths with bounded extraction and ordered sections; audiobook attachment remains outside this contract.
 - A pasted submission creates one document revision with one logical section; paragraph breaks do not create sections.
 - Text processing and language analysis are durable jobs. No request waits for them.
 - Valid prepared text remains readable when language analysis or meaning lookup fails.
@@ -212,11 +212,12 @@ This table maps HTTP delivery to owned application contracts. Exact framework ha
 | `GET /api/v1/me/learning-profile`                                              | Learning profile       | profile or `404 profile_not_created`                                                  |
 | `PUT /api/v1/me/learning-profile`                                              | Learning profile       | idempotently create the slice profile                                                 |
 | `POST /api/v1/imports/pasted-text`                                             | Import process manager | `202 created`, `200 duplicate`, or validation problem                                 |
+| `POST /api/v1/imports/file`                                                    | Import process manager | `202 created`, `200 duplicate`, or safe file validation/extraction problem            |
 | `GET /api/v1/library-items`                                                    | Library composition    | bounded owned items with processing and resume summaries                              |
 | `GET /api/v1/library-items/{libraryItemId}`                                    | Library composition    | owned item/status/capabilities                                                        |
 | `GET /api/v1/library-items/{libraryItemId}/book-index`                         | Library composition    | owned book summary and ordered chapter/section list                                   |
 | `POST /api/v1/library-items/{libraryItemId}/processing-retries`                | Import                 | accepted retry for one advertised capability                                          |
-| `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...`               | Reader composition     | bounded content window for the selected section, confirmed states, saved position    |
+| `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...`               | Reader composition     | bounded content window for the selected section, confirmed states, saved position     |
 | `PUT /api/v1/library-items/{libraryItemId}/reader-position`                    | Reader                 | authoritative confirmed semantic position                                             |
 | `PUT /api/v1/library-items/{libraryItemId}/sections/{sectionId}/completion`    | Reader                 | authoritative explicit completion                                                     |
 | `GET /api/v1/library-items/{libraryItemId}/occurrences/{occurrenceId}/context` | Reader composition     | deterministic token/state/context plus independently degradable meaning               |

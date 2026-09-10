@@ -12,7 +12,7 @@ Add a safe, asynchronous PDF/EPUB import path while preserving the existing past
 
 - Source selector for Text, PDF, and EPUB; existing pasted-text behavior remains unchanged.
 - Multipart upload validation with bounded size, MIME/extension checks, and private ownership.
-- Background extraction into ordered sections/chapters, followed by existing text preparation and language analysis.
+- Bounded extraction into ordered sections/chapters, followed by the existing asynchronous text preparation and language analysis stages.
 - PDF page-aware sections and EPUB spine/document sections where reliable; deterministic fallback to one section when structure is unavailable.
 - User-safe processing, retry, and parse-failure states.
 - Contract, migration, unit/integration/API/E2E coverage and documentation updates.
@@ -26,7 +26,7 @@ Add a safe, asynchronous PDF/EPUB import path while preserving the existing past
 ## Safety and recovery
 
 - Uploaded bytes are untrusted. Enforce byte limits before parsing, verify declared and detected type, reject encrypted/corrupt/unsupported files, and never execute embedded content.
-- Extraction is a durable worker stage; no long-running upload request performs parsing.
+- The current bounded 10 MB implementation performs extraction before creating the durable workflow so the existing database-backed worker can reuse the normalized chapter text. Moving raw-byte retention and extraction itself behind the worker is a follow-up hardening step before production-scale uploads.
 - Failed extraction leaves no readable partial sections and exposes a safe reference plus retry only when classified transient.
 - Existing pasted-text imports and old rows remain readable through additive migration.
 
@@ -51,3 +51,10 @@ git diff --check
 
 - Exact production upload quota and object-storage provider remain rollout decisions; the implementation uses a bounded local/test adapter and documents the limit.
 - Whether scanned PDF OCR is needed remains deferred; this slice rejects PDFs without extractable text.
+
+## Implementation evidence
+
+- PDF/EPUB source selector and multipart import route are implemented.
+- PDF pages and EPUB spine entries become ordered Reader sections; existing pasted text remains a single section.
+- `make verify`, `pnpm build`, and Chromium critical E2E (6 tests) pass locally.
+- Audiobook attachment, raw-byte durable storage, and worker-side extraction remain follow-up work before production-scale file uploads.

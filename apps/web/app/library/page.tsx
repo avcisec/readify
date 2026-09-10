@@ -9,6 +9,7 @@ import { ApiProblem, api, idempotencyKey, turkishProblem } from "../../lib/api";
 type Item = {
   id: string;
   title: string;
+  sourceType: "pasted_text" | "pdf" | "epub";
   readerAvailable: boolean;
   hasSavedPosition: boolean;
   processing: {
@@ -23,6 +24,7 @@ type LearningProfile = { targetLanguage: "fr"; startingLevel: string };
 
 const stageCopy: Record<string, string> = {
   queued: "Sırada",
+  extracting: "Dosya ayrıştırılıyor",
   preparing_text: "Metin hazırlanıyor",
   analyzing_language: "Kelime araçları hazırlanıyor",
   complete: "Hazır",
@@ -89,7 +91,7 @@ export default function LibraryPage() {
             ) : null}
           </div>
           <Link className="heading-action button-link" href="/import">
-            <span>Metin ekle</span>
+            <span>İçe aktar</span>
             <span aria-hidden="true">+</span>
           </Link>
         </section>
@@ -114,7 +116,7 @@ export default function LibraryPage() {
               <h3>Okuma rafın henüz boş</h3>
               <p>İlk Fransızca metnini ekleyerek başlayabilirsin.</p>
               <Link className="button-link" href="/import">
-                İlk metni ekle
+                İlk içeriği aktar
               </Link>
             </div>
           ) : (
@@ -129,7 +131,11 @@ export default function LibraryPage() {
                     <span className="book-rule" />
                   </div>
                   <div className="item-card-body">
-                    <p className="item-kind">Yapıştırılan metin</p>
+                    <p className="item-kind">
+                      {item.sourceType === "pasted_text"
+                        ? "Yapıştırılan metin"
+                        : item.sourceType.toUpperCase()}
+                    </p>
                     <h3>{item.title}</h3>
                     <span
                       className={`status status-${item.processing.overall}`}

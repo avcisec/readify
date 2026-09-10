@@ -9,7 +9,7 @@ export type LearningProfile = {
 export type LibraryItemView = {
   id: string;
   title: string;
-  sourceType: "pasted_text";
+  sourceType: "pasted_text" | "pdf" | "epub";
   readerAvailable: boolean;
   hasSavedPosition: boolean;
   processing: ProcessingStatus;

@@ -10,6 +10,8 @@ import { api, idempotencyKey, turkishProblem } from "../../lib/api";
 export default function ImportPage() {
   const router = useRouter();
   const [text, setText] = useState("");
+  const [source, setSource] = useState<"text" | "pdf" | "epub">("text");
+  const [file, setFile] = useState<File>();
   const [message, setMessage] = useState<string>();
   const [busy, setBusy] = useState(false);
 
@@ -18,18 +20,27 @@ export default function ImportPage() {
     setBusy(true);
     setMessage(undefined);
     try {
+      const isText = source === "text";
+      const body = isText
+        ? JSON.stringify({ text })
+        : (() => {
+            const form = new FormData();
+            form.set("source", source);
+            if (file) form.set("file", file);
+            return form;
+          })();
       const result = await api<{ outcome: string }>(
-        "/api/v1/imports/pasted-text",
+        isText ? "/api/v1/imports/pasted-text" : "/api/v1/imports/file",
         {
           method: "POST",
           headers: { "Idempotency-Key": idempotencyKey() },
-          body: JSON.stringify({ text }),
+          body,
         },
       );
       setMessage(
         result.outcome === "duplicate"
           ? "Bu metin zaten kütüphanende."
-          : "Metin eklendi; arka planda hazırlanıyor.",
+          : "İçerik eklendi; arka planda hazırlanıyor.",
       );
       window.setTimeout(() => router.push("/library"), 500);
     } catch (error) {
@@ -52,7 +63,7 @@ export default function ImportPage() {
             ← Kütüphaneye dön
           </Link>
           <p className="eyebrow">Yeni içerik</p>
-          <h1>Metin ekle</h1>
+          <h1>İçe aktar</h1>
           <p className="page-intro">
             Kopyaladığın Fransızca metni çalışma alanına al ve okumaya başla.
           </p>
@@ -60,31 +71,85 @@ export default function ImportPage() {
         <section className="panel import-panel" aria-labelledby="import-title">
           <div className="panel-heading">
             <div className="feature-icon" aria-hidden="true">
-              Aa
+              {source === "text" ? "Aa" : source.toUpperCase()}
             </div>
             <div>
-              <h2 id="import-title">Fransızca metnin</h2>
-              <p>Metnin özel kalır ve arka planda hazırlanır.</p>
+              <h2 id="import-title">İçerik kaynağı</h2>
+              <p>İçeriğin özel kalır ve arka planda hazırlanır.</p>
             </div>
           </div>
+          <div
+            className="import-source-picker"
+            role="group"
+            aria-label="İçe aktarma türü"
+          >
+            {(["text", "pdf", "epub"] as const).map((option) => (
+              <button
+                type="button"
+                className={
+                  source === option ? "source-option selected" : "source-option"
+                }
+                aria-pressed={source === option}
+                onClick={() => setSource(option)}
+                key={option}
+              >
+                {option === "text" ? "TEXT" : option.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <form onSubmit={submit}>
-            <label htmlFor="pasted-text">Fransızca metin</label>
-            <textarea
-              id="pasted-text"
-              rows={16}
-              maxLength={100000}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Metni buraya yapıştır…"
-              aria-describedby="text-count"
-              required
-            />
+            {source === "text" ? (
+              <>
+                <label htmlFor="pasted-text">Fransızca metin</label>
+                <textarea
+                  id="pasted-text"
+                  rows={16}
+                  maxLength={100000}
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  placeholder="Metni buraya yapıştır…"
+                  aria-describedby="text-count"
+                  required
+                />
+              </>
+            ) : (
+              <>
+                <label htmlFor="source-file">
+                  {source.toUpperCase()} dosyası
+                </label>
+                <input
+                  id="source-file"
+                  type="file"
+                  accept={
+                    source === "pdf"
+                      ? ".pdf,application/pdf"
+                      : ".epub,application/epub+zip"
+                  }
+                  onChange={(event) => setFile(event.target.files?.[0])}
+                  required
+                />
+                <p className="form-help">
+                  En fazla 10 MB. Taranmış PDF ve DRM korumalı EPUB
+                  desteklenmez.
+                </p>
+              </>
+            )}
             <div className="form-row">
-              <span id="text-count" className="character-count">
-                {[...text].length.toLocaleString("tr-TR")} / 50.000 karakter
-              </span>
-              <button disabled={busy || [...text].length > 50000}>
-                {busy ? "Ekleniyor…" : "Kütüphaneye ekle"}
+              {source === "text" ? (
+                <span id="text-count" className="character-count">
+                  {[...text].length.toLocaleString("tr-TR")} / 50.000 karakter
+                </span>
+              ) : (
+                <span className="character-count">
+                  {file?.name ?? "Dosya seçilmedi"}
+                </span>
+              )}
+              <button
+                disabled={
+                  busy || (source === "text" ? [...text].length > 50000 : !file)
+                }
+              >
+                {busy ? "İçe aktarılıyor…" : "İçe aktar"}
               </button>
             </div>
           </form>

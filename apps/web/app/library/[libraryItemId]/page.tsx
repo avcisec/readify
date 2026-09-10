@@ -9,6 +9,7 @@ import { ApiProblem, api, turkishProblem } from "../../../lib/api";
 type Book = {
   id: string;
   title: string;
+  sourceType: "pasted_text" | "pdf" | "epub";
   readerAvailable: boolean;
   hasSavedPosition: boolean;
   chapters: Array<{
@@ -67,7 +68,11 @@ export default function BookIndexPage() {
             <span className="book-rule" />
           </div>
           <div>
-            <p className="eyebrow">Yapıştırılan metin</p>
+            <p className="eyebrow">
+              {book.sourceType === "pasted_text"
+                ? "Yapıştırılan metin"
+                : book.sourceType.toUpperCase()}
+            </p>
             <h1>{book.title}</h1>
             <p className="page-intro">
               {book.chapters.length} bölüm · Okuma konumun otomatik saklanır.

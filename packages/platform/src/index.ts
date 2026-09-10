@@ -6,3 +6,4 @@ export * from "./database/migrate";
 export * from "./service";
 export * from "./language-detection";
 export * from "./language-analyzer";
+export * from "./file-import";

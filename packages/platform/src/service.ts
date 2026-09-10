@@ -27,6 +27,7 @@ import {
 } from "./language-detection";
 import { logEvent } from "./logging";
 import { RecordedLanguageAnalyzer } from "./language-analyzer";
+import type { ExtractedChapter, FileSourceType } from "./file-import";
 
 type Executor = Kysely<Database> | Transaction<Database>;
 type Clock = () => Date;
@@ -229,6 +230,43 @@ export class ReadifyService implements SliceApplication {
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult> {
+    return this.createImport(
+      userId,
+      text,
+      idempotencyKey,
+      correlationId,
+      "pasted_text",
+    );
+  }
+
+  async createFileImport(
+    userId: string,
+    sourceType: FileSourceType,
+    chapters: ExtractedChapter[],
+    idempotencyKey: string,
+    correlationId: string,
+  ): Promise<ImportCommandResult> {
+    if (!chapters.length) throw new AppError("file_no_extractable_text", 422);
+    return this.createImport(
+      userId,
+      chapters.map((chapter) => chapter.text).join("\f"),
+      idempotencyKey,
+      correlationId,
+      sourceType,
+      chapters[0]?.title,
+      chapters.map((chapter) => chapter.title),
+    );
+  }
+
+  private async createImport(
+    userId: string,
+    text: string,
+    idempotencyKey: string,
+    correlationId: string,
+    sourceType: "pasted_text" | FileSourceType,
+    titleOverride?: string,
+    sectionTitles: string[] = [],
+  ): Promise<ImportCommandResult> {
     if (!idempotencyKey || idempotencyKey.length > 200)
       throw new AppError("idempotency_key_required", 400);
     if (!(await this.getProfile(userId)))
@@ -250,7 +288,10 @@ export class ReadifyService implements SliceApplication {
           : {},
       );
     }
-    const assessment = this.languageDetector.assess(normalized.text);
+    if (titleOverride) normalized.title = titleOverride;
+    const assessment = this.languageDetector.assess(
+      normalized.text.replaceAll("\f", "\n"),
+    );
     if (assessment.outcome === "mismatch")
       throw new AppError("language_mismatch", 422, {
         detectedLanguage: assessment.detectedLanguage,
@@ -298,13 +339,13 @@ export class ReadifyService implements SliceApplication {
         const importId = this.id("imp");
         const libraryItemId = this.id("lib");
         const now = this.timestamp();
-        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${now})`.execute(
+        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, section_titles, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${JSON.stringify(sectionTitles)}::jsonb, ${now})`.execute(
           transaction,
         );
         await sql`insert into import_workflows (id, owner_id, source_revision_id, stage, text_capability, word_tools_capability, updated_at) values (${importId}, ${userId}, ${revisionId}, 'queued', 'pending', 'pending', ${now})`.execute(
           transaction,
         );
-        await sql`insert into library_items (id, owner_id, import_id, source_revision_id, title, source_type, created_at) values (${libraryItemId}, ${userId}, ${importId}, ${revisionId}, ${normalized.title}, 'pasted_text', ${now})`.execute(
+        await sql`insert into library_items (id, owner_id, import_id, source_revision_id, title, source_type, created_at) values (${libraryItemId}, ${userId}, ${importId}, ${revisionId}, ${normalized.title}, ${sourceType}, ${now})`.execute(
           transaction,
         );
         await this.enqueue(
@@ -399,7 +440,7 @@ export class ReadifyService implements SliceApplication {
     return {
       id: String(row.id),
       title: String(row.title),
-      sourceType: "pasted_text",
+      sourceType: String(row.source_type) as LibraryItemView["sourceType"],
       readerAvailable: row.text_capability === "ready",
       hasSavedPosition: Boolean(row.has_saved_position),
       processing: this.processing(row),
@@ -427,9 +468,10 @@ export class ReadifyService implements SliceApplication {
     const result = await sql<{
       id: string;
       ordinal: number;
+      title: string;
       completed: boolean;
     }>`
-      select s.id, s.ordinal,
+        select s.id, s.ordinal, s.title,
         exists(select 1 from section_completions c where c.owner_id=${userId} and c.section_id=s.id) as completed
       from sections s join library_items l on l.source_revision_id=s.source_revision_id
       where l.id=${itemId} and l.owner_id=${userId}
@@ -440,7 +482,7 @@ export class ReadifyService implements SliceApplication {
       chapters: result.rows.map((section) => ({
         id: section.id,
         ordinal: Number(section.ordinal),
-        title: `Bölüm ${Number(section.ordinal) + 1}`,
+        title: String(section.title || `Bölüm ${Number(section.ordinal) + 1}`),
         completed: Boolean(section.completed),
         readerAvailable: item.readerAvailable,
       })),
@@ -548,9 +590,10 @@ export class ReadifyService implements SliceApplication {
       const result = await sql<{
         revision_id: string;
         normalized_text: string;
+        section_titles: string[];
         version: number;
       }>`
-        select w.source_revision_id as revision_id, r.normalized_text, w.version
+        select w.source_revision_id as revision_id, r.normalized_text, r.section_titles, w.version
         from import_workflows w join source_revisions r on r.id=w.source_revision_id
         where w.id=${importId} and w.owner_id=${ownerId} for update
       `.execute(transaction);
@@ -562,27 +605,37 @@ export class ReadifyService implements SliceApplication {
         transaction,
       );
       if (!existing.rows[0]) {
-        const sectionId = this.id("sec");
-        await sql`insert into sections (id, source_revision_id, ordinal) values (${sectionId}, ${workflow.revision_id}, 0)`.execute(
-          transaction,
-        );
-        const paragraphs = workflow.normalized_text.split(/\n[ \t]*\n/gu);
-        for (const [paragraphOrdinal, paragraphText] of paragraphs.entries()) {
-          const paragraphId = this.id("par");
-          await sql`insert into paragraphs (id, section_id, ordinal, text) values (${paragraphId}, ${sectionId}, ${paragraphOrdinal}, ${paragraphText})`.execute(
+        const sections = workflow.normalized_text.split(/\f/gu);
+        for (const [sectionOrdinal, sectionText] of sections.entries()) {
+          const sectionId = this.id("sec");
+          const title =
+            workflow.section_titles[sectionOrdinal] ??
+            `Bölüm ${sectionOrdinal + 1}`;
+          await sql`insert into sections (id, source_revision_id, ordinal, title) values (${sectionId}, ${workflow.revision_id}, ${sectionOrdinal}, ${title})`.execute(
             transaction,
           );
-          const sentenceMatches = [
-            ...paragraphText.matchAll(/[^.!?]+(?:[.!?]+|$)/gu),
-          ].filter((match) => match[0].length > 0);
-          for (const [sentenceOrdinal, match] of sentenceMatches.entries()) {
-            const sentenceText = match[0];
-            const startScalar = [...paragraphText.slice(0, match.index)].length;
-            const endScalar = startScalar + [...sentenceText].length;
-            const sentenceId = this.id("sen");
-            await sql`insert into sentences (id, paragraph_id, ordinal, start_scalar, end_scalar, text) values (${sentenceId}, ${paragraphId}, ${sentenceOrdinal}, ${startScalar}, ${endScalar}, ${sentenceText})`.execute(
+          const paragraphs = sectionText.split(/\n[ \t]*\n/gu);
+          for (const [
+            paragraphOrdinal,
+            paragraphText,
+          ] of paragraphs.entries()) {
+            const paragraphId = this.id("par");
+            await sql`insert into paragraphs (id, section_id, ordinal, text) values (${paragraphId}, ${sectionId}, ${paragraphOrdinal}, ${paragraphText})`.execute(
               transaction,
             );
+            const sentenceMatches = [
+              ...paragraphText.matchAll(/[^.!?]+(?:[.!?]+|$)/gu),
+            ].filter((match) => match[0].length > 0);
+            for (const [sentenceOrdinal, match] of sentenceMatches.entries()) {
+              const sentenceText = match[0];
+              const startScalar = [...paragraphText.slice(0, match.index)]
+                .length;
+              const endScalar = startScalar + [...sentenceText].length;
+              const sentenceId = this.id("sen");
+              await sql`insert into sentences (id, paragraph_id, ordinal, start_scalar, end_scalar, text) values (${sentenceId}, ${paragraphId}, ${sentenceOrdinal}, ${startScalar}, ${endScalar}, ${sentenceText})`.execute(
+                transaction,
+              );
+            }
           }
         }
       }

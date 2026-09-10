@@ -344,6 +344,33 @@ textarea {
   margin-bottom: 0;
   color: var(--muted);
 }
+.import-source-picker {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+.source-option {
+  min-width: 4.5rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  color: var(--muted);
+  background: var(--surface-subtle);
+  font-size: 0.78rem;
+  font-weight: 760;
+  letter-spacing: 0.05em;
+}
+.source-option.selected,
+.source-option:focus-visible {
+  border-color: var(--brand);
+  color: var(--surface);
+  background: var(--brand);
+}
+.form-help {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.87rem;
+}
 .feature-icon {
   width: 2.9rem;
   height: 2.9rem;
