@@ -200,7 +200,7 @@ Opening the mobile bottom sheet must not hide the selected sentence behind both 
 
 ## Deferred UX
 
-Follow the priority owner in [FEATURES.md](../../FEATURES.md) and the consolidated [non-goals](non-goals.md). In particular, do not surface disabled placeholders for:
+Follow the priority owner in [FEATURES.md](../../FEATURES.md) and the consolidated [MVP scope and non-goals](mvp-scope.md). In particular, do not surface disabled placeholders for:
 
 - **Plus:** favorites, playlists/history, next-input recommendation, import cancellation/preview/chapter selection/metadata editing, transcript/OCR editing, bulk vocabulary changes, card editing, export history/options, continuous play/download/regeneration, font/theme customization, reports, or source difficulty trends;
 - **Later:** standalone audio/podcast/RSS/DOCX/bulk import, public Library/community/tutors/social/gamification, speaking/writing feedback, voice cloning/design, multi-language guarantees, or offline-native behavior.

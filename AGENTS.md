@@ -1,18 +1,22 @@
 # Agent operating guide
 
-Use progressive disclosure: read this map, then the relevant spec/architecture document, then only the code in scope.
+Use progressive disclosure. Start with one task row below, then read the relevant specification/contract, then only the code in scope. Never bulk-read `docs/`, completed plans, or competitor research.
 
-## Repository map
+## Task routing
 
-- Product truth: `idea.md`, `FEATURES.md`; interpreted scope, flows, and uncertainties start at `docs/product/README.md`.
-- Acceptance-ready feature specifications: `docs/product-specs/`.
-- Architecture and dependency rules: `ARCHITECTURE.md`, then `docs/architecture/`; read the relevant slice contract before implementation.
-- Long-lived decisions: `docs/decisions/`.
-- Non-trivial execution plans: `docs/exec-plans/active/`; move finished plans to `completed/`.
-- Research: `docs/research/`; evidence is not a requirement unless promoted into a product spec.
-- Quality and operations: `docs/quality/` and `docs/operations/`.
+| Task | Required first read | Read only when affected |
+| --- | --- | --- |
+| Product behavior | `docs/product/README.md`, relevant `docs/product-specs/*` | linked UX decision/flow |
+| UI/UX | relevant product spec, `docs/product/interaction-model.md` | screen inventory, wireframe, visual foundation |
+| Architecture/API | `ARCHITECTURE.md`, relevant slice contract | domain boundaries and relevant ADR |
+| Database/job change | relevant slice contract | storage/background-jobs and migration ADR |
+| Operations/security/performance | owning document under `docs/operations/` or `docs/quality/` | relevant architecture contract |
+| Research | `docs/research/README.md`, then one competitor `SUMMARY.md` | detailed evidence only to answer a named uncertainty |
+| Implementation | relevant active plan | specification, contract, then touched code |
 
-Before an architectural change, read `docs/architecture/overview.md`, `domain-boundaries.md`, the relevant slice contract, and relevant ADRs. Create or supersede an ADR when changing a long-lived decision.
+Product truth starts at `idea.md` and `FEATURES.md`; interpreted MVP scope is `docs/product/mvp-scope.md`. ADRs live in `docs/decisions/`. Active plans live in `docs/exec-plans/active/`; completed work is summarized in `docs/exec-plans/completed/README.md` and full history stays in Git.
+
+Before an architectural change, read `docs/architecture/overview.md`, `domain-boundaries.md`, the relevant slice contract, and only the relevant ADRs. Create or supersede an ADR when changing a long-lived decision.
 
 ## Work loop
 
