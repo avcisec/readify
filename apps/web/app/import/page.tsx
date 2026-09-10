@@ -129,7 +129,7 @@ export default function ImportPage() {
                   required
                 />
                 <p className="form-help">
-                  En fazla 10 MB. Taranmış PDF ve DRM korumalı EPUB
+                  En fazla 200 MB. Taranmış PDF ve DRM korumalı EPUB
                   desteklenmez.
                 </p>
               </>

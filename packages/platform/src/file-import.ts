@@ -3,7 +3,7 @@ import EPub from "epub";
 export type FileSourceType = "pdf" | "epub";
 export type ExtractedChapter = { title: string; text: string };
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 200 * 1024 * 1024;
 
 export function maxUploadBytes(): number {
   return MAX_FILE_BYTES;
@@ -29,11 +29,12 @@ export async function extractFile(
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_FILE_BYTES)
     throw new Error("file_too_large");
   if (sourceType === "pdf") {
-    const { default: pdfParse } = await import("pdf-parse");
-    const parsed = await pdfParse(bytes);
-    const pages = parsed.text
-      .split(/\f/gu)
-      .map((text) => text.replace(/\r\n?/gu, "\n").trim())
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: bytes });
+    const parsed = await parser.getText();
+    await parser.destroy();
+    const pages = parsed.pages
+      .map((page) => page.text.replace(/\r\n?/gu, "\n").trim())
       .filter(Boolean);
     if (!pages.length) throw new Error("file_no_extractable_text");
     return pages.map((text, index) => ({ title: `Sayfa ${index + 1}`, text }));

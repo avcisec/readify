@@ -51,7 +51,7 @@ export function turkishProblem(code: string): string {
     stale_state_change:
       "Bu değişiklikten sonra başka bir işlem yapıldığı için geri alınamıyor.",
     file_required: "Lütfen bir dosya seçin.",
-    file_too_large: "Dosya 10 MB sınırını aşıyor.",
+    file_too_large: "Dosya 200 MB sınırını aşıyor.",
     unsupported_file_type: "Yalnızca PDF veya EPUB dosyası seçebilirsiniz.",
     file_drm_unsupported: "DRM korumalı EPUB dosyaları desteklenmiyor.",
     file_no_extractable_text:
