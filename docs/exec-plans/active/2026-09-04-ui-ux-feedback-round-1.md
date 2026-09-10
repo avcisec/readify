@@ -61,4 +61,30 @@ Manually inspect desktop, tablet, and mobile layout plus token state shortcuts, 
 
 ## Evidence
 
-Pending implementation and human acceptance.
+Implementation commits on `ui/feedback-round-1`:
+
+- `a7644c1` docs: record first UI UX feedback round
+- `925cd71` feat(profile): surface the saved onboarding level
+- `1392290` refactor(library): remove the redundant import shortcut
+- `e4e0ad4` fix(navigation): use bottom navigation at tablet widths
+- `d45807e` fix(reader): eliminate responsive overflow
+- `f41efd4` fix(reader): improve token hover and focus contrast
+- `8f2383e` fix(reader): clarify fixture dictionary availability
+- `b48287a` feat(reader): persist semantic position while reading
+- `5357684` fix(import): block confident non-French submissions
+- `197afa1` feat(vocabulary): add four explicit learning stages
+- `187bdc4` fix(reader): make undo discoverable
+- `197677b` fix(docs): complete vocabulary ADR metadata
+- `ad5f213` fix(reader): preserve hover and context focus behavior
+- `a9933d2` fix(reader): harden restore and stale undo feedback
+
+Automated evidence after the final commit:
+
+- `pnpm format` passed.
+- `make verify` passed: repository harness, formatting, lint, typecheck, unit/provider tests, PostgreSQL integration tests, architecture checks, migration upgrade/idempotency checks, audit, security, product, and documentation checks.
+- `pnpm exec playwright test --project=chromium --project=firefox` passed: 8 tests.
+- `pnpm build` passed for web and worker packages.
+- `git diff --check` passed.
+- WebKit was attempted through the full E2E configuration but could not start because this host lacks Playwright's required `libavif.so.16` and related system packages. `sudo` requires a local password, so installing OS dependencies is an environment action outside this repository change. Chromium and Firefox cover the application assertions successfully.
+
+Human acceptance remains pending at the requested desktop (1440px), tablet (1024/820px), and mobile (500/390px) viewports, including visual contrast, keyboard shortcuts, Undo, semantic resume, mismatch blocking, and fixture-dictionary empty state. Keep this plan under `active/` until the independent review records only `PASS`. No push or merge has been performed.
