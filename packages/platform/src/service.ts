@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { sql, type Kysely, type Transaction } from "kysely";
 import {
   NORMALIZATION_VERSION,
+  MAX_FILE_TEXT_SCALARS,
   canUndo,
   fixtureMeaning,
   normalizePastedText,
@@ -273,7 +274,10 @@ export class ReadifyService implements SliceApplication {
       throw new AppError("learning_profile_required", 409);
     let normalized;
     try {
-      normalized = normalizePastedText(text);
+      normalized = normalizePastedText(
+        text,
+        sourceType === "pasted_text" ? undefined : MAX_FILE_TEXT_SCALARS,
+      );
     } catch (error) {
       const code = error instanceof Error ? error.message : "invalid_text";
       throw new AppError(
@@ -282,7 +286,14 @@ export class ReadifyService implements SliceApplication {
         code === "text_too_long"
           ? {
               fieldErrors: [
-                { field: "text", code: "max_scalar_values", limit: 50_000 },
+                {
+                  field: "text",
+                  code: "max_scalar_values",
+                  limit:
+                    sourceType === "pasted_text"
+                      ? 50_000
+                      : MAX_FILE_TEXT_SCALARS,
+                },
               ],
             }
           : {},

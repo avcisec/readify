@@ -11,6 +11,7 @@ This document owns the first slice's application and browser/API contracts. It d
 
 - One authenticated account has one French learning profile in this slice.
 - The original slice contains bounded pasted plain text. PDF and EPUB upload are additive file-source paths with bounded extraction and ordered sections; audiobook attachment remains outside this contract.
+- Pasted text is capped at 50,000 Unicode scalar values; extracted PDF/EPUB text is capped at 1,000,000 Unicode scalar values. Uploaded bytes remain capped at 200 MB.
 - A pasted submission creates one document revision with one logical section; paragraph breaks do not create sections.
 - Text processing and language analysis are durable jobs. No request waits for them.
 - Valid prepared text remains readable when language analysis or meaning lookup fails.

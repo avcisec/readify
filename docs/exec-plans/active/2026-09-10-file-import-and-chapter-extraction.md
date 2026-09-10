@@ -27,6 +27,7 @@ Add a safe, asynchronous PDF/EPUB import path while preserving the existing past
 
 - Uploaded bytes are untrusted. Enforce byte limits before parsing, verify declared and detected type, reject encrypted/corrupt/unsupported files, and never execute embedded content.
 - The current bounded 200 MB implementation performs extraction before creating the durable workflow so the existing database-backed worker can reuse the normalized chapter text. Moving raw-byte retention and extraction itself behind the worker is a follow-up hardening step before production-scale uploads.
+- Pasted TEXT remains limited to 50,000 Unicode scalar values; extracted PDF/EPUB text is limited to 1,000,000 Unicode scalar values.
 - Failed extraction leaves no readable partial sections and exposes a safe reference plus retry only when classified transient.
 - Existing pasted-text imports and old rows remain readable through additive migration.
 

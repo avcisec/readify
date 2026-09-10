@@ -1,5 +1,6 @@
 export const NORMALIZATION_VERSION = 1;
 export const MAX_TEXT_SCALARS = 50_000;
+export const MAX_FILE_TEXT_SCALARS = 1_000_000;
 export const MAX_TITLE_SCALARS = 80;
 
 export type NormalizedText = {
@@ -28,7 +29,10 @@ export function truncateScalars(value: string, maximum: number): string {
   return [...value].slice(0, maximum).join("");
 }
 
-export function normalizePastedText(input: string): NormalizedText {
+export function normalizePastedText(
+  input: string,
+  maximum = MAX_TEXT_SCALARS,
+): NormalizedText {
   if (!isWellFormedUnicode(input))
     throw new TextValidationError("ill_formed_unicode");
   const lines = input.replace(/\r\n?/gu, "\n").split("\n");
@@ -37,8 +41,7 @@ export function normalizePastedText(input: string): NormalizedText {
   const text = lines.join("\n");
   if (!text || /^\s*$/u.test(text)) throw new TextValidationError("empty_text");
   const scalarCount = scalarLength(text);
-  if (scalarCount > MAX_TEXT_SCALARS)
-    throw new TextValidationError("text_too_long");
+  if (scalarCount > maximum) throw new TextValidationError("text_too_long");
   const firstVisibleLine = lines.find((line) => /\S/u.test(line));
   const displayTitle = (firstVisibleLine ?? "").replace(/\s+/gu, " ").trim();
   return {
