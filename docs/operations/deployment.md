@@ -19,6 +19,6 @@ Production promotion is blocked until hosting region, availability objectives, b
 
 ## CI implementation
 
-`.github/workflows/verify.yml` installs the pinned Node/pnpm graph, runs `make verify` against disposable PostgreSQL, and builds web/worker artifacts. A separate required browser job installs Playwright's Chromium, Firefox, and WebKit engines and runs `make e2e`. Normal CI uses only the outbox, fixture-meaning, recorded-analysis, and approved synthetic content; it requires no paid credential or model download.
+`.github/workflows/verify.yml` installs the pinned Node/pnpm graph, runs `make verify` against disposable PostgreSQL, and builds web/worker artifacts. A separate required browser job installs Playwright's Chromium, Firefox, and WebKit engines and runs `make e2e`. On browser failure, its HTML report, screenshots, and traces are retained for seven days as a repository-scoped artifact. Normal CI uses only the outbox, fixture-meaning, recorded-analysis, and approved synthetic content; it requires no paid credential or model download.
 
 The current artifacts authorize local/test and restricted synthetic preview only. Production promotion remains blocked by the gates above, and startup rejects deterministic provider adapters when `APP_ENV=production`.

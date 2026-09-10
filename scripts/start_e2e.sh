@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly readify_test_db_port="${READIFY_TEST_DB_PORT:-55432}"
+
 docker compose up -d postgres-test
 until docker compose exec -T postgres-test pg_isready -U readify -d readify_test >/dev/null 2>&1; do
   sleep 1
 done
 
 export APP_ENV=test
-export DATABASE_URL="postgresql://readify:readify@127.0.0.1:55432/readify_test"
+export DATABASE_URL="postgresql://readify:readify@127.0.0.1:${readify_test_db_port}/readify_test"
 export IDENTITY_ADAPTER=outbox
 export MEANING_ADAPTER=fixture
 export LANGUAGE_ANALYZER_ADAPTER=recorded
