@@ -1,6 +1,6 @@
 # E2E CI reliability
 
-- Status: implementation active
+- Status: verification complete; human acceptance pending
 - Date: 2026-09-10
 - Scope owner: [Development lifecycle](../../quality/development-lifecycle.md)
 - Regression evidence: GitHub Actions runs `34489546867` and `34489631919`
@@ -57,5 +57,6 @@ git diff --check
 
 - Builder evidence: six Chromium scenarios passed; the same six Firefox scenarios passed during the cross-browser run. The longest focused scenario was under 13 seconds locally, versus the previous 45–52 second aggregate timeout.
 - `make verify` and the production build pass with the isolated test-port override.
-- Local WebKit launch is unavailable because the host lacks `libavif.so.16`; GitHub CI installs the required browser libraries and remains the acceptance authority for WebKit.
-- Self-review found missing CI trace/report retention and added a seven-day failure artifact; independent PR/CI review remains pending.
+- Local WebKit launch is unavailable because the host lacks `libavif.so.16`; GitHub CI installed the required browser libraries and passed Chromium, Firefox, and WebKit in 6m24s.
+- GitHub Actions run `34492110261` passed both `verify` and `browser` jobs.
+- Self-review found missing CI trace/report retention and added a seven-day failure artifact. No `BLOCKER` or `MAJOR` self-review finding remains; independent human acceptance is pending on PR #2.
