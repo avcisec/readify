@@ -7,6 +7,7 @@ import {
   normalizePastedText,
   type ImportCommandResult,
   type LanguageAnalyzer,
+  type BookIndexView,
   type LibraryItemView,
   type OccurrenceContextView,
   type ProgressSummaryView,
@@ -421,6 +422,31 @@ export class ReadifyService implements SliceApplication {
     return this.libraryItemById(this.database, userId, itemId);
   }
 
+  async getBookIndex(userId: string, itemId: string): Promise<BookIndexView> {
+    const item = await this.libraryItemById(this.database, userId, itemId);
+    const result = await sql<{
+      id: string;
+      ordinal: number;
+      completed: boolean;
+    }>`
+      select s.id, s.ordinal,
+        exists(select 1 from section_completions c where c.owner_id=${userId} and c.section_id=s.id) as completed
+      from sections s join library_items l on l.source_revision_id=s.source_revision_id
+      where l.id=${itemId} and l.owner_id=${userId}
+      order by s.ordinal
+    `.execute(this.database);
+    return {
+      ...item,
+      chapters: result.rows.map((section) => ({
+        id: section.id,
+        ordinal: Number(section.ordinal),
+        title: `Bölüm ${Number(section.ordinal) + 1}`,
+        completed: Boolean(section.completed),
+        readerAvailable: item.readerAvailable,
+      })),
+    };
+  }
+
   async claimAndRunOne(): Promise<boolean> {
     const job = await this.database
       .transaction()
@@ -730,7 +756,11 @@ export class ReadifyService implements SliceApplication {
     });
   }
 
-  async getReader(userId: string, itemId: string): Promise<ReaderView> {
+  async getReader(
+    userId: string,
+    itemId: string,
+    sectionId?: string,
+  ): Promise<ReaderView> {
     const itemResult = await sql<Record<string, unknown>>`
       select l.id as library_item_id, l.title, l.source_revision_id, w.overall, w.stage, w.text_capability,
         w.word_tools_capability, w.retryable_capabilities, w.error_code, w.error_reference_id, w.version, w.updated_at
@@ -746,7 +776,9 @@ export class ReadifyService implements SliceApplication {
     }>`select id, ordinal from sections where source_revision_id=${String(item.source_revision_id)} order by ordinal`.execute(
       this.database,
     );
-    const section = sections.rows[0];
+    const section = sectionId
+      ? sections.rows.find((candidate) => candidate.id === sectionId)
+      : sections.rows[0];
     if (!section) throw new AppError("reader_not_ready", 409);
     const paragraphs = await sql<{
       id: string;
@@ -790,7 +822,7 @@ export class ReadifyService implements SliceApplication {
       paragraph_id: string;
       sentence_id: string | null;
       version: number;
-    }>`select source_revision_id, section_id, paragraph_id, sentence_id, version from reader_positions where owner_id=${userId} and library_item_id=${itemId}`.execute(
+    }>`select source_revision_id, section_id, paragraph_id, sentence_id, version from reader_positions where owner_id=${userId} and library_item_id=${itemId} and section_id=${section.id}`.execute(
       this.database,
     );
     const completion = await sql<{

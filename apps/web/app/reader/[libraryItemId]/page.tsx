@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppNav } from "../../../components/app-nav";
 import {
   ApiProblem,
@@ -88,6 +88,8 @@ const learningStages = [
 export default function ReaderPage() {
   const { libraryItemId } = useParams<{ libraryItemId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sectionId = searchParams.get("sectionId");
   const [reader, setReader] = useState<Reader>();
   const [context, setContext] = useState<Context>();
   const [message, setMessage] = useState<string>();
@@ -103,7 +105,9 @@ export default function ReaderPage() {
   const load = useCallback(async () => {
     try {
       setReader(
-        await api<Reader>(`/api/v1/library-items/${libraryItemId}/reader`),
+        await api<Reader>(
+          `/api/v1/library-items/${libraryItemId}/reader${sectionId ? `?sectionId=${encodeURIComponent(sectionId)}` : ""}`,
+        ),
       );
     } catch (error) {
       if (error instanceof ApiProblem && error.status === 401)
@@ -115,7 +119,7 @@ export default function ReaderPage() {
           ),
         );
     }
-  }, [libraryItemId, router]);
+  }, [libraryItemId, router, sectionId]);
   useEffect(() => {
     void load();
   }, [load]);

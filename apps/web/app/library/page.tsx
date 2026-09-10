@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AppNav } from "../../components/app-nav";
 import { ApiProblem, api, idempotencyKey, turkishProblem } from "../../lib/api";
@@ -33,9 +32,7 @@ export default function LibraryPage() {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [profile, setProfile] = useState<LearningProfile>();
-  const [text, setText] = useState("");
   const [message, setMessage] = useState<string>();
-  const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     try {
       setItems((await api<{ items: Item[] }>("/api/v1/library-items")).items);
@@ -64,36 +61,6 @@ export default function LibraryPage() {
     return () => window.clearTimeout(timer);
   }, [items, load]);
 
-  async function submit(event?: FormEvent) {
-    event?.preventDefault();
-    setBusy(true);
-    setMessage(undefined);
-    try {
-      const result = await api<{ outcome: string; libraryItem: Item }>(
-        "/api/v1/imports/pasted-text",
-        {
-          method: "POST",
-          headers: { "Idempotency-Key": idempotencyKey() },
-          body: JSON.stringify({ text }),
-        },
-      );
-      setText("");
-      setMessage(
-        result.outcome === "duplicate"
-          ? "Bu metin zaten kütüphanende."
-          : "Metin eklendi; arka planda hazırlanıyor.",
-      );
-      await load();
-    } catch (error) {
-      setMessage(
-        turkishProblem(
-          error instanceof Error ? error.message : "request_failed",
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
   async function retry(item: Item) {
     await api(`/api/v1/library-items/${item.id}/processing-retries`, {
       method: "POST",
@@ -121,42 +88,14 @@ export default function LibraryPage() {
               </p>
             ) : null}
           </div>
+          <Link className="heading-action button-link" href="/import">
+            <span>Metin ekle</span>
+            <span aria-hidden="true">+</span>
+          </Link>
         </section>
-        <section className="panel import-panel" aria-labelledby="import-title">
-          <div className="panel-heading">
-            <div className="feature-icon" aria-hidden="true">
-              Aa
-            </div>
-            <div>
-              <h2 id="import-title">Yeni metin ekle</h2>
-              <p>Kopyaladığın Fransızca metni doğrudan çalışma alanına al.</p>
-            </div>
-          </div>
-          <form onSubmit={submit}>
-            <label htmlFor="pasted-text">Fransızca metin</label>
-            <textarea
-              id="pasted-text"
-              rows={10}
-              maxLength={100000}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Metni buraya yapıştır…"
-              aria-describedby="text-count"
-              required
-            />
-            <div className="form-row">
-              <span id="text-count" className="character-count">
-                {[...text].length.toLocaleString("tr-TR")} / 50.000 karakter
-              </span>
-              <button disabled={busy || [...text].length > 50000}>
-                {busy ? "Ekleniyor…" : "Kütüphaneye ekle"}
-              </button>
-            </div>
-          </form>
-          <p className="inline-message" aria-live="polite">
-            {message}
-          </p>
-        </section>
+        <p className="inline-message" aria-live="polite">
+          {message}
+        </p>
         <section className="library-collection" aria-labelledby="library-title">
           <div className="section-heading">
             <div>
@@ -173,12 +112,10 @@ export default function LibraryPage() {
                 <span>R</span>
               </div>
               <h3>Okuma rafın henüz boş</h3>
-              <p>
-                İlk Fransızca metnini yukarıya yapıştırarak başlayabilirsin.
-              </p>
-              <a className="button-link" href="#import-title">
+              <p>İlk Fransızca metnini ekleyerek başlayabilirsin.</p>
+              <Link className="button-link" href="/import">
                 İlk metni ekle
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="card-grid">
@@ -204,10 +141,9 @@ export default function LibraryPage() {
                       {item.readerAvailable ? (
                         <Link
                           className="button-link"
-                          href={`/reader/${item.id}`}
+                          href={`/library/${item.id}`}
                         >
-                          {item.hasSavedPosition ? "Devam et" : "Oku"}
-                          <span aria-hidden="true">→</span>
+                          Kitabı aç <span aria-hidden="true">→</span>
                         </Link>
                       ) : (
                         <span className="preparing-copy">

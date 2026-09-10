@@ -273,6 +273,16 @@ textarea {
   color: var(--muted);
   font-size: 1.02rem;
 }
+.back-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-weight: 650;
+  text-decoration: none;
+}
+.back-link:hover {
+  color: var(--brand);
+}
 .profile-summary {
   width: fit-content;
   display: inline-flex;
@@ -519,6 +529,76 @@ textarea {
 .item-card-actions .button-link {
   width: 100%;
   justify-content: space-between;
+}
+.book-index-header {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 2.5rem;
+}
+.book-cover-large {
+  min-height: 13rem;
+}
+.book-index-header h1 {
+  max-width: 42rem;
+  overflow-wrap: anywhere;
+}
+.chapter-list {
+  max-width: 58rem;
+}
+.chapter-list ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+.chapter-list li {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  min-height: 4.75rem;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.chapter-number {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+.chapter-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.chapter-copy strong {
+  overflow-wrap: anywhere;
+}
+.chapter-copy small {
+  color: var(--muted);
+}
+.chapter-read {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+.chapter-read:hover {
+  color: #fff;
+  background: var(--brand);
+}
+.chapter-read svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 .preparing-copy,
 .card-note {
@@ -1116,6 +1196,18 @@ button.reader-token:hover:not(:disabled) {
   }
   .page-intro {
     font-size: 0.92rem;
+  }
+  .book-index-header {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .book-cover-large {
+    min-height: 8.5rem;
+  }
+  .chapter-list li {
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    gap: 0.65rem;
   }
   .heading-action {
     min-width: 2.75rem;

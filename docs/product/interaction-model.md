@@ -21,7 +21,7 @@ This document owns cross-screen interaction behavior for the declared MVP. It re
 | Modal dialog                       | destructive deletion and `.apkg` export confirmation                                                            |
 | Separate screen                    | Import, Vocabulary management, focused Review, Progress, Profile/Settings                                       |
 
-Do not use a modal for ordinary word lookup, import progress, provider failure, or Reader settings.
+Do not use a modal for ordinary word lookup, import progress, provider failure, or Reader settings. Import is a dedicated screen so the Library remains focused on choosing content.
 
 ## Reader layout
 
@@ -153,12 +153,12 @@ Review uses only explicit cards and records each rating once. Recognition, conte
 
 ## Import interaction model
 
-The Import wizard has two visible steps, not a long technical pipeline:
+The Import screen keeps the paste flow focused:
 
-1. **Choose source:** enabled source type plus URL/file.
-2. **Validate and submit:** supported-format/limit result, expected language, blocking high-confidence mismatch guidance, private-by-default notice, Submit.
+1. **Open import screen:** Library CTA navigates to `/import`.
+2. **Validate and submit:** pasted text limit/result, expected language, blocking high-confidence mismatch guidance, private-by-default notice, Submit.
 
-After submission, Library owns progress. User-facing stages use stable language such as `Queued`, `Preparing text`, `Analyzing language`, `Preparing audio`, `Synchronizing`, `Ready to read`, `Ready`, and `Failed`; internal provider names stay in details only when useful. Progress is determinate only when the system knows a reliable total.
+After submission, Library owns progress. Each item opens a book index that lists its persisted sections as ordered chapters. User-facing stages use stable language such as `Queued`, `Preparing text`, `Analyzing language`, `Preparing audio`, `Synchronizing`, `Ready to read`, `Ready`, and `Failed`; internal provider names stay in details only when useful. Progress is determinate only when the system knows a reliable total.
 
 Partial readiness prioritizes opening valid text. Optional processing states attach to capabilities (`Audio processing`, `Word sync unavailable`) rather than leaving the entire item indefinitely “processing.” Retry is stage-aware but presented as one user action.
 

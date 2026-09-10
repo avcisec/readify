@@ -22,7 +22,7 @@ The MVP uses nine screens/surfaces. Processing, contextual lookup, Anki export, 
 
 - **Purpose / goal:** resume learning, open an item, or import content.
 - **Entry:** post-onboarding, primary navigation, Reader Back, completed import.
-- **Actions / information:** Continue card; Import CTA; item title/source/type; section progress; ready/processing/failed state; search; source-type filter; open status details; retry; delete.
+- **Actions / information:** Continue card; Import CTA to the dedicated import screen; item title/source/type; section progress; ready/processing/failed state; search; source-type filter; open status details; retry; delete.
 - **Empty:** short value statement and one `Import content` CTA. **Loading:** stable card skeletons, not a blank page. **Error:** retry Library load without hiding cached/available items. **Success:** Continue and item list.
 - **Exit:** Reader, Import, Vocabulary, Review, Progress, Profile/Settings.
 
@@ -31,12 +31,20 @@ Processing detail is an expandable card/drawer showing current stage, honest pro
 ## 4. Import
 
 - **Purpose / goal:** submit one supported private source with confidence.
-- **Entry:** Library Import CTA or empty state.
+- **Entry:** Library Import CTA or empty state; direct `/import` navigation.
 - **Actions / information:** choose enabled source; for `Paste text`, use a large multiline plain-text field with placeholder, visible character counter/limit, and paragraph-preserving paste/edit behavior; for other sources use the appropriate URL/file input; expected French language; privacy statement; validation; detected-language mismatch; submit.
 - **Empty:** source choices: Paste text, YouTube when enabled, EPUB, PDF, Markdown; the first slice opens directly with the empty paste field and does not show unavailable-source placeholders. **Loading:** submission/validation uses an explicit phase and disables duplicate submission without replacing entered text. **Error:** specific empty/over-limit/language/network error for pasted text, or source-appropriate file/URL error, with correction. **Success:** item created and return to Library status.
 - **Exit:** Library without submitting; Library item after submitting. Closing after submit does not cancel background work.
 
 Import does not include a rich-text editor, metadata editing, chapter selection, raw-audio upload, bulk import, or a dedicated processing wait screen. Pasted markup is treated as plain text rather than rendered formatting.
+
+## Book index
+
+- **Purpose / goal:** understand one imported book and choose a chapter to read.
+- **Entry:** a Library item card or a saved source link.
+- **Actions / information:** title/source type; overall readiness; Continue when a saved position exists; ordered chapter list with completion state and an accessible read icon for each ready chapter.
+- **Empty:** processing or no chapter ready message. **Loading:** preserve the shell and show a compact loading state. **Error:** safe retry/not-found message. **Success:** chapter list and scoped Reader links.
+- **Exit:** Reader for a selected chapter, Library, or primary navigation.
 
 ## 5. Reader
 

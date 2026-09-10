@@ -89,8 +89,7 @@ One auth surface changes mode rather than sending the learner through unrelated 
 ┌──────────────────────────────────────────────────────┐
 │ ← Library             Import private content         │
 ├──────────────────────────────────────────────────────┤
-│ Choose source                                        │
-│ [Paste text ✓] [YouTube*] [EPUB] [PDF] [Markdown]    │
+│ Paste private French text · [Paste text ✓]            │
 │                                                      │
 │ ┌──────────────────────────────────────────────────┐ │
 │ │ Paste or type French text here…                 │ │
@@ -111,7 +110,26 @@ One auth surface changes mode rather than sending the learner through unrelated 
 └──────────────────────────────────────────────────────┘
 ```
 
-Paste is the low-friction first-slice path and stays on one screen. The textarea is the dominant control; on mobile it spans the content width and remains tall enough to review several lines above the keyboard. Recoverable submission errors preserve its current value. `Cancel` means leave before submission; unsubmitted text is not promised to survive navigation, refresh, or sign-out. After submission the app returns to Library and does not show a blocking progress page. Other enabled sources replace the textarea with their URL/file control; `YouTube*` appears only when enabled.
+Paste is the low-friction first-slice path and stays on one screen. The textarea is the dominant control; on mobile it spans the content width and remains tall enough to review several lines above the keyboard. Recoverable submission errors preserve its current value. `Cancel` means leave before submission; unsubmitted text is not promised to survive navigation, refresh, or sign-out. After submission the app returns to Library and does not show a blocking progress page.
+
+## Book index — desktop and mobile structure
+
+```text
+┌──────────────┬──────────────────────────────────────────────────────────┐
+│ Navigation   │ ← Library                                                │
+│              │                                                            │
+│              │ [FR cover]  Une histoire                                 │
+│              │            Pasted text · 12 chapters                      │
+│              │            [Continue from saved position]                 │
+│              │                                                            │
+│              │ Chapters                                                   │
+│              │ 01  Chapter 1                                  [read ◉]   │
+│              │ 02  Chapter 2                         Completed [read ◉]  │
+│              │ …                                                          │
+└──────────────┴──────────────────────────────────────────────────────────┘
+```
+
+The index is the book's stable home. Each read control opens only its selected section in Reader. A pasted-text item currently contains one generated chapter; structured imports can expose more chapters through the same list.
 
 ## Reader Page View — desktop
 

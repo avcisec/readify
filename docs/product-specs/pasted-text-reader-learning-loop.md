@@ -57,7 +57,7 @@ Changing a slice choice requires updating this spec and its acceptance scenarios
 ### Empty Library and pasted-text import
 
 - Empty Library shows one primary `İçerik içe aktar` action and no disabled future-source controls.
-- Import opens a single large multiline field labeled for French text. It supports paste and direct editing, states that submitted content remains private, and shows a live `current / 50,000` character count.
+- Import is a dedicated `/import` screen with a single large multiline field labeled for French text. It supports paste and direct editing, states that submitted content remains private, and shows a live `current / 50,000` character count.
 - Clipboard markup and visual formatting are discarded. Line endings normalize to LF, outer blank lines are trimmed, and internal text/paragraph breaks are preserved; HTML- or Markdown-looking content is never executed or rendered as markup.
 - Validation distinguishes empty/whitespace-only content, ill-formed Unicode, more than 50,000 Unicode scalar values after normalization v1, submission/network interruption, and detected non-French content. Empty, invalid, or over-limit content cannot be submitted. The transport rejects JSON bodies over 512 KiB before parsing.
 - A policy-qualified non-French result cannot be submitted to the French workspace; the learner edits or replaces the text. Short or undetermined input remains accepted to avoid false rejection.
@@ -77,8 +77,12 @@ Library shows user-facing stages: `Sırada`, `Metin hazırlanıyor`, `Dil analiz
 - Permanent validation failures do not offer meaningless Retry.
 - Error details include a safe reference ID without parser/provider internals.
 
-### Library after import
+### Library and book index after import
 
+- Library is the collection surface. Its import action opens `/import`; it does not contain the paste editor.
+- Each item opens a private book index at `/library/{libraryItemId}`. The index shows the generated title, `Yapıştırılan metin` source type, processing state, and ordered chapters backed by persisted sections.
+- The current pasted-text pipeline creates one section, so a pasted item initially has one chapter. Future structured imports may provide multiple sections without changing this navigation model.
+- Each ready chapter has an accessible read action that opens Reader scoped to that section. The item-level Continue action remains available when a saved position exists.
 - The item shows the generated title, `Yapıştırılan metin` source type, current stage, and structural reading position when available.
 - `Devam et` appears after the learner has a saved Reader position; before that the primary action is `Oku`.
 - The slice does not require Library search, source filters, deletion, editing, favorites, recommendations, or multiple-item bulk behavior.
