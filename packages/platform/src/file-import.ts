@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import EPub from "epub";
 
 export type FileSourceType = "pdf" | "epub";
@@ -30,6 +31,10 @@ export async function extractFile(
     throw new Error("file_too_large");
   if (sourceType === "pdf") {
     const { PDFParse } = await import("pdf-parse");
+    const require = createRequire(import.meta.url);
+    PDFParse.setWorker(
+      require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs"),
+    );
     const parser = new PDFParse({ data: bytes });
     const parsed = await parser.getText();
     await parser.destroy();
