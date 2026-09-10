@@ -15,11 +15,11 @@ Reduce the default documentation context needed by a fresh coding agent while pr
 - Summarize completed execution plans in one historical index; full plan text remains recoverable from Git history.
 - Consolidate active-plan routing in `docs/exec-plans/README.md`.
 - Add mechanical context-budget checks for active plan count, oversized active documents, and completed-plan sprawl.
-- Keep detailed competitor research intact and explicitly outside the default agent read path.
+- Retain only competitor decision summaries in the working tree; archive detailed evidence and methods at Git tag `research-baseline-2026-09` outside the default agent read path.
 
 ## Non-goals
 
-- Rewriting research evidence or accepted ADR history.
+- Rewriting research conclusions or accepted ADR history.
 - Compressing documents by deleting active requirements.
 - Enforcing a repository-wide token count that would encourage opaque prose.
 
@@ -33,8 +33,8 @@ Reduce the default documentation context needed by a fresh coding agent while pr
 
 ## Evidence
 
-- Markdown count under `docs/` reduced from 113 to 93 files.
+- Markdown count under `docs/` reduced from 113 to 47 files; competitor research reduced from 50 to four decision-oriented documents.
 - Product vision/non-goals now live with MVP scope; completed-plan detail reduced from 10 documents/645 lines to one routed history index.
-- `AGENTS.md` is a 38-line task router and excludes bulk reads of docs, completed plans, and research.
+- `AGENTS.md` is a 38-line task router and excludes bulk reads of docs, completed plans, and archived research.
 - Mechanical checks cap active plans at three, active documents at 500 lines, `AGENTS.md` at 80 lines, and completed-plan detail at the history index.
 - Targeted documentation/context-budget tests and full repository verification passed. Human acceptance remains before this plan is summarized and removed from `active/`.

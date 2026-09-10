@@ -11,7 +11,7 @@ Use progressive disclosure. Start with one task row below, then read the relevan
 | Architecture/API | `ARCHITECTURE.md`, relevant slice contract | domain boundaries and relevant ADR |
 | Database/job change | relevant slice contract | storage/background-jobs and migration ADR |
 | Operations/security/performance | owning document under `docs/operations/` or `docs/quality/` | relevant architecture contract |
-| Research | `docs/research/README.md`, then one competitor `SUMMARY.md` | detailed evidence only to answer a named uncertainty |
+| Research | `docs/research/README.md`, then one competitor `SUMMARY.md` | archived baseline only to answer a named uncertainty |
 | Implementation | relevant active plan | specification, contract, then touched code |
 
 Product truth starts at `idea.md` and `FEATURES.md`; interpreted MVP scope is `docs/product/mvp-scope.md`. ADRs live in `docs/decisions/`. Active plans live in `docs/exec-plans/active/`; completed work is summarized in `docs/exec-plans/completed/README.md` and full history stays in Git.

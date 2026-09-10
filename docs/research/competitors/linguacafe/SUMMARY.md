@@ -1,6 +1,6 @@
 # LinguaCafe — karar özeti
 
-**İnceleme tarihi:** 31 Ağustos 2026 · Ayrıntılı kanıt: [EVIDENCE_INDEX.md](EVIDENCE_INDEX.md)
+**İnceleme tarihi:** 31 Ağustos 2026 · Ayrıntılı kanıt ve yöntem Git etiketi `research-baseline-2026-09` altında arşivlenmiştir.
 
 ## 1. LinguaCafe bir cümlede nedir?
 
@@ -38,7 +38,7 @@ Word-level forced alignment, GPU kuyruk/maliyet, OCR doğruluğu, YouTube ToS/sa
 
 ## 17. Cevaplanmamış sorular
 
-Maliyet/latency bütçeleri, caption kalite eşiği, raw audio retention, Anki formatı ve mastery değerlendirme protokolü [19_OPEN_QUESTIONS_AND_FOLLOWUPS.md](19_OPEN_QUESTIONS_AND_FOLLOWUPS.md)’de.
+Maliyet/latency bütçeleri, caption kalite eşiği, raw audio retention, Anki formatı ve mastery değerlendirme protokolü açık kalmıştır. Bunlar güncel ürün belgelerine taşınmadıkça gereksinim değildir.
 
 ## 18. Sonraki rakipler/testler
 
