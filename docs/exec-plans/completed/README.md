@@ -20,5 +20,6 @@ git show <commit-before-removal>:docs/exec-plans/completed/<plan>.md
 | 2026-09-04 | First UI/UX feedback round: profile summary, responsive Reader/navigation, semantic resume, language blocking, explicit vocabulary stages, and Undo | [Pasted-text Reader spec](../../product-specs/pasted-text-reader-learning-loop.md), [ADR-0007](../../decisions/0007-explicit-vocabulary-learning-stages.md) |
 | 2026-09-10 | Agent context routing, product-doc consolidation, completed-plan indexing, and detailed competitor-research archival | [Agent operating guide](../../../AGENTS.md), [research index](../../research/README.md) |
 | 2026-09-10 | Retry-isolated, focused browser journeys; configurable test DB port; retained failure artifacts; green Chromium/Firefox/WebKit CI | [Testing strategy](../../quality/testing-strategy.md), [deployment](../../operations/deployment.md) |
+| 2026-09-10 | Risk-based documentation, runtime, and browser verification routing with mechanically checked CI path coverage | [Testing strategy](../../quality/testing-strategy.md), [deployment](../../operations/deployment.md) |
 
 New completed work is appended as one concise row after acceptance. Do not retain a separate completed plan unless its recovery procedure or incident evidence is still operationally active.
