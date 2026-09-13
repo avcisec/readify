@@ -1,6 +1,6 @@
 # File import and chapter extraction
 
-- Status: implemented; awaiting human PDF-corpus acceptance
+- Status: implementation complete; awaiting private PDF-corpus acceptance
 - Date: 2026-09-10
 - Scope owner: [Pasted-text Reader specification](../../product-specs/pasted-text-reader-learning-loop.md)
 
@@ -61,6 +61,9 @@ git diff --check
 - PDF reconstruction now uses outline/typography/geometry before multilingual lexical hints, reconstructs paragraphs across pages, and preserves raw/display text plus multi-segment anchors.
 - Migration `006_pdf_book_reconstruction` stores processor/config versions, page quality, deterministic semantic keys, canonical structure, quality reports, and source anchors.
 - Page checkpoints are restart-safe and reused on retry; deterministic extraction failures no longer consume all retry attempts.
+- Reader delivery is cursor-paged in 50-paragraph windows, opens around a saved semantic anchor, and no longer truncates long fallback chapters.
+- Single-item deletion revokes access transactionally, rehomes shared vocabulary references, and purges account-scoped local source bytes through an idempotent worker job. Migration `007_content_deletion_indexes` prevents pathological foreign-key cascade scans.
+- The Verify workflow installs the pinned PyMuPDF/Tesseract runtime and executes native-text plus selective-OCR smoke coverage. The ignored local corpus has an executable manifest-based acceptance command.
 - Automated evidence covers story/long-book chapters, leaf-outline flattening, two columns, boilerplate, hyphenation, dialogue/accents, sentence anchors, stable IDs, real PostgreSQL persistence, token provenance, and retry deduplication.
 - `make verify` and `pnpm build` pass. A generated native PDF and a generated scanned PDF passed the real PyMuPDF 1.26.4/Tesseract 5.3.4 smoke path; scanned-page OCR selected only page 1 and produced readable text.
 - Browser regression: Chromium and Firefox passed 12/12. WebKit could not launch because this host lacks `libavif.so.16`; no WebKit test body ran, so the full `make e2e` gate remains infrastructure-blocked rather than waived.
@@ -70,3 +73,4 @@ git diff --check
 
 - Run the local/private 8–12 PDF quality corpus described in `tests/fixtures/pdf/README.md` with the pinned PyMuPDF/Tesseract runtime.
 - Review chapter boundaries, paragraph boundaries, preserved punctuation and sampled PDF bbox anchors. Record failures as corpus cases before adding heuristics.
+- Push the feature branch, obtain green GitHub Verify/Browser/Documentation workflows and an independent review. Do not close this plan on local evidence alone.

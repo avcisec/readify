@@ -21,5 +21,6 @@ git show <commit-before-removal>:docs/exec-plans/completed/<plan>.md
 | 2026-09-10 | Agent context routing, product-doc consolidation, completed-plan indexing, and detailed competitor-research archival | [Agent operating guide](../../../AGENTS.md), [research index](../../research/README.md) |
 | 2026-09-10 | Retry-isolated, focused browser journeys; configurable test DB port; retained failure artifacts; green Chromium/Firefox/WebKit CI | [Testing strategy](../../quality/testing-strategy.md), [deployment](../../operations/deployment.md) |
 | 2026-09-10 | Risk-based documentation, runtime, and browser verification routing with mechanically checked CI path coverage | [Testing strategy](../../quality/testing-strategy.md), [deployment](../../operations/deployment.md) |
+| 2026-09-10 | Dedicated Import surface, private book index, ordered chapter list, and section-scoped Reader navigation | [Screen inventory](../../product/screen-inventory.md), [pasted-text contracts](../../architecture/pasted-text-slice-contracts.md) |
 
 New completed work is appended as one concise row after acceptance. Do not retain a separate completed plan unless its recovery procedure or incident evidence is still operationally active.
