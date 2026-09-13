@@ -31,3 +31,7 @@ tmp/
 
 # Local competitor runtime/source snapshot; research reports remain tracked.
 /linguacafe/
+
+# Private/local extraction quality corpus; only its operating guide is tracked.
+/extraction-benchmark-datasets/*
+!/extraction-benchmark-datasets/README.md

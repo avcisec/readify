@@ -19,3 +19,5 @@ For each local file create an untracked sibling `<name>.expected.json`:
 ```
 
 Acceptance records chapter precision/recall, paragraph-boundary sample accuracy, corrupted-character count, OCR page choice, and source-anchor page/bbox spot checks. Add a general heuristic only when multiple corpus files demonstrate the same failure; avoid publisher-specific rules without measured need.
+
+The executable local-corpus command and ignored dataset layout are documented in [`extraction-benchmark-datasets/README.md`](../../../extraction-benchmark-datasets/README.md). The command exercises the same PyMuPDF and reconstruction functions as the worker; it is deliberately separate from fast CI because the private corpus is not available there.

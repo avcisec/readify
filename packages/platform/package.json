@@ -12,6 +12,7 @@
     "migrate:down": "tsx src/database/migrate-cli.ts down",
     "migrate:initial": "tsx src/database/migrate-cli.ts initial",
     "migrate:reset": "tsx src/database/migrate-cli.ts reset",
+    "quality:pdf": "tsx src/pdf-quality-cli.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
