@@ -5,6 +5,7 @@ import {
   type LanguageAnalyzer,
 } from "@readify/modules";
 import { createDatabase } from "./database/client";
+import { reconstructPdf } from "./pdf-reconstruction";
 import { ReadifyService } from "./service";
 
 const database = createDatabase();
@@ -410,6 +411,183 @@ describe("first vertical slice", () => {
         )
       ).rows[0]?.count,
     ).toBe("0");
+  });
+
+  it("persists reconstructed PDF hierarchy and precise provenance without retry duplication", async () => {
+    const owner = await account("pdf-provenance@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    const pages = [
+      {
+        number: 1,
+        width: 600,
+        height: 800,
+        rawText: "Première histoire\n\nÉlise ouvre la porte.",
+        text: "Première histoire\n\nÉlise ouvre la porte.",
+        qualityStatus: "native_good" as const,
+        qualityScore: 1,
+        blocks: [
+          {
+            id: "p1:b0",
+            text: "Première histoire",
+            bbox: [60, 80, 540, 110] as [number, number, number, number],
+            lines: [
+              {
+                id: "p1:b0:l0",
+                text: "Première histoire",
+                bbox: [60, 80, 540, 110] as [number, number, number, number],
+                sourceStartScalar: 0,
+                sourceEndScalar: 17,
+                spans: [
+                  {
+                    id: "p1:b0:l0:s0",
+                    text: "Première histoire",
+                    size: 20,
+                    font: "Book-Bold",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "p1:b1",
+            text: "Élise ouvre la porte.",
+            bbox: [60, 150, 540, 180] as [number, number, number, number],
+            lines: [
+              {
+                id: "p1:b1:l0",
+                text: "Élise ouvre la porte.",
+                bbox: [60, 150, 540, 180] as [number, number, number, number],
+                sourceStartScalar: 19,
+                sourceEndScalar: 40,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: 2,
+        width: 600,
+        height: 800,
+        rawText: "Deuxième histoire\n\nCamille mange une pomme.",
+        text: "Deuxième histoire\n\nCamille mange une pomme.",
+        qualityStatus: "native_good" as const,
+        qualityScore: 1,
+        blocks: [
+          {
+            id: "p2:b0",
+            text: "Deuxième histoire",
+            bbox: [60, 80, 540, 110] as [number, number, number, number],
+            lines: [
+              {
+                id: "p2:b0:l0",
+                text: "Deuxième histoire",
+                bbox: [60, 80, 540, 110] as [number, number, number, number],
+                sourceStartScalar: 0,
+                sourceEndScalar: 17,
+                spans: [
+                  {
+                    id: "p2:b0:l0:s0",
+                    text: "Deuxième histoire",
+                    size: 20,
+                    font: "Book-Bold",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "p2:b1",
+            text: "Camille mange une pomme.",
+            bbox: [60, 150, 540, 180] as [number, number, number, number],
+            lines: [
+              {
+                id: "p2:b1:l0",
+                text: "Camille mange une pomme.",
+                bbox: [60, 150, 540, 180] as [number, number, number, number],
+                sourceStartScalar: 19,
+                sourceEndScalar: 43,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const document = reconstructPdf({
+      pages,
+      outline: [
+        { level: 1, title: "Première histoire", pageNumber: 1 },
+        { level: 1, title: "Deuxième histoire", pageNumber: 2 },
+      ],
+      extractor: { name: "fixture", version: "1" },
+    });
+    const created = await service.createFileImport(
+      owner.userId,
+      "pdf",
+      document.chapters,
+      "pdf-canonical-import",
+      "pdf-canonical-request",
+      4_096,
+    );
+    const item = (created.body as { libraryItem: { id: string } }).libraryItem;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (
+        (await service.getLibraryItem(owner.userId, item.id)).processing
+          .overall === "ready"
+      )
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const index = await service.getBookIndex(owner.userId, item.id);
+    expect(index.chapters.map((chapter) => chapter.title)).toEqual([
+      "Première histoire",
+      "Deuxième histoire",
+    ]);
+    const counts = await sql<{
+      sections: string;
+      paragraphs: string;
+      anchors: string;
+      occurrence_anchors: string;
+    }>`select
+      (select count(*) from sections s join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id})::text as sections,
+      (select count(*) from paragraphs p join sections s on s.id=p.section_id join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id})::text as paragraphs,
+      (select count(*) from content_source_anchors a where a.entity_type in ('section','paragraph','sentence'))::text as anchors,
+      (select count(*) from content_source_anchors a where a.entity_type='occurrence')::text as occurrence_anchors
+    `.execute(database);
+    expect(counts.rows[0]).toMatchObject({ sections: "2", paragraphs: "2" });
+    expect(Number(counts.rows[0]?.anchors)).toBeGreaterThanOrEqual(6);
+    expect(Number(counts.rows[0]?.occurrence_anchors)).toBeGreaterThan(0);
+
+    const importRow = await sql<{
+      import_id: string;
+    }>`select import_id from library_items where id=${item.id}`.execute(
+      database,
+    );
+    const retried = await sql<{
+      id: string;
+    }>`update jobs set status='queued', available_at='2020-01-01T00:00:00Z' where subject_id=${importRow.rows[0]!.import_id} and kind='prepare_text' returning id`.execute(
+      database,
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const state = await sql<{
+        status: string;
+      }>`select status from jobs where id=${retried.rows[0]!.id}`.execute(
+        database,
+      );
+      if (state.rows[0]?.status === "succeeded") break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const afterRetry = await sql<{
+      count: string;
+    }>`select count(*)::text as count from sections s join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id}`.execute(
+      database,
+    );
+    expect(afterRetry.rows[0]?.count).toBe("2");
+    const duplicateAnalysisJobs = await sql<{
+      count: string;
+    }>`select count(*)::text as count from jobs where subject_id=${importRow.rows[0]!.import_id} and kind='analyze_language'`.execute(
+      database,
+    );
+    expect(duplicateAnalysisJobs.rows[0]?.count).toBe("1");
   });
 
   it("keeps Reader available after analyzer exhaustion and supports a targeted retry", async () => {

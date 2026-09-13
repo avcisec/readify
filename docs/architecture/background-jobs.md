@@ -28,6 +28,8 @@ Every job records:
 
 Workers checkpoint between bounded units (page, section, audio chunk). A lease and heartbeat allow another worker to recover abandoned work after restart. Completion uses compare-and-set/idempotency protection so redelivery is safe.
 
+For PDF imports, extracted pages are durable idempotent checkpoints. Recovery reuses successful native/OCR pages, retries failed pages, then reruns deterministic whole-book reconstruction; semantic uniqueness and revision-stable IDs prevent duplicate chapters or anchors. Details are owned by the [PDF import contract](pdf-import-contract.md).
+
 ## Retry and failure policy
 
 - Retry only classified transient failures with capped exponential backoff and jitter.

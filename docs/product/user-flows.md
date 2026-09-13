@@ -63,7 +63,7 @@ Library → Import screen
 
 For `Paste text`, the primary control is a large multiline field with a visible character counter. Clipboard formatting is discarded while paragraph breaks remain. Empty/whitespace-only or over-limit text is blocked inline before submission.
 
-For PDF, extractable page text becomes ordered chapters; for EPUB, the reading spine becomes ordered chapters. Scanned PDFs and DRM-protected EPUBs are rejected in this slice. Audiobook attachment and synchronized playback remain deferred.
+For PDF, physical pages remain provenance while outline, heading typography and text continuity produce semantic chapters and paragraphs. Short-story collections expose each reliably detected story as a chapter; uncertain books remain readable as one low-confidence chapter. Pages without usable native text use selective CPU OCR when its language pack is installed, while isolated page failures remain diagnosable. EPUB continues to use its reading spine. DRM-protected EPUBs remain rejected. Audiobook attachment and synchronized playback remain deferred.
 
 User-visible alternatives:
 

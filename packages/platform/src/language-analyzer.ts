@@ -20,6 +20,11 @@ const responseSchema = z.object({
           pos: z.string(),
           startScalar: z.number().int().nonnegative(),
           endScalar: z.number().int().nonnegative(),
+          upos: z.string().optional(),
+          xpos: z.string().optional(),
+          morphologicalFeatures: z.record(z.string(), z.string()).optional(),
+          dependencyHead: z.number().int().nullable().optional(),
+          dependencyRelation: z.string().optional(),
         }),
       ),
     }),
@@ -27,7 +32,11 @@ const responseSchema = z.object({
 });
 
 export class RecordedLanguageAnalyzer implements LanguageAnalyzer {
-  async analyze(text: string): Promise<{
+  async analyze(
+    text: string,
+    _signal?: AbortSignal,
+    _language?: string,
+  ): Promise<{
     provider: string;
     providerVersion: string;
     tokens: TokenAnalysis[];
@@ -49,6 +58,7 @@ type Pending = {
   reject: (reason: Error) => void;
   timer: ReturnType<typeof setTimeout>;
   text: string;
+  language: string;
 };
 
 export class StanzaProcessAnalyzer implements LanguageAnalyzer {
@@ -99,10 +109,15 @@ export class StanzaProcessAnalyzer implements LanguageAnalyzer {
       const tokens = parsed.sentences.flatMap((sentence) =>
         sentence.words.map((word) => ({
           surface: word.surface,
-          lemma: word.lemma.toLocaleLowerCase("fr"),
+          lemma: word.lemma.toLocaleLowerCase(pending.language),
           partOfSpeech: word.pos.toLocaleLowerCase("en-US"),
           startScalar: word.startScalar,
           endScalar: word.endScalar,
+          upos: word.upos,
+          xpos: word.xpos,
+          morphologicalFeatures: word.morphologicalFeatures,
+          dependencyHead: word.dependencyHead,
+          dependencyRelation: word.dependencyRelation,
         })),
       );
       for (const token of tokens)
@@ -137,6 +152,7 @@ export class StanzaProcessAnalyzer implements LanguageAnalyzer {
   async analyze(
     text: string,
     signal: AbortSignal,
+    language = "fr",
   ): Promise<{
     provider: string;
     providerVersion: string;
@@ -151,7 +167,7 @@ export class StanzaProcessAnalyzer implements LanguageAnalyzer {
         this.child?.kill();
         this.failPending(new Error("language_analyzer_timeout"));
       }, this.timeoutMs);
-      this.pending = { resolve, reject, timer, text };
+      this.pending = { resolve, reject, timer, text, language };
       signal.addEventListener(
         "abort",
         () => {
@@ -160,7 +176,7 @@ export class StanzaProcessAnalyzer implements LanguageAnalyzer {
         },
         { once: true },
       );
-      child.stdin.write(`${JSON.stringify({ text })}\n`);
+      child.stdin.write(`${JSON.stringify({ text, language })}\n`);
     });
   }
 

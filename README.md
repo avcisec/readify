@@ -63,6 +63,19 @@ The local PostgreSQL container binds only to `127.0.0.1:55431` to avoid a typica
 
 In a second terminal run `pnpm dev:worker`. Open `http://localhost:3000/sign-in`; local/test mode exposes a clearly labeled local proof link instead of sending real email. Copy `.env.example` to an untracked `.env` only when overriding defaults. The application and worker expose `/health/live` and `/health/ready` (worker defaults to port 3001).
 
+PDF import additionally needs the pinned CPU extractor. OCR is optional and is used only for pages without usable native text:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r scripts/requirements-pdf.txt
+# Debian/Ubuntu, for scanned French pages:
+sudo apt-get install tesseract-ocr tesseract-ocr-fra
+export PYTHON="$PWD/.venv/bin/python"
+pnpm dev:worker
+```
+
+See the [PDF reconstruction contract](docs/architecture/pdf-import-contract.md) for quality states and limitations.
+
 ## Current technical direction
 
-Readify is a modular monolith with a separately runnable asynchronous worker and PostgreSQL as both source of truth and durable queue. Pasted text stays transactionally in PostgreSQL; object storage is deferred until a file/media slice needs it. External provider choices stay behind contracts and deterministic adapters fail closed in production. See [Architecture](ARCHITECTURE.md), the [slice contract](docs/architecture/pasted-text-slice-contracts.md), and [ADRs](docs/decisions/README.md).
+Readify is a modular monolith with a separately runnable asynchronous worker and PostgreSQL as both source of truth and durable queue. Pasted text stays transactionally in PostgreSQL; PDF files currently use bounded local storage and must move to shared object storage before multi-host workers. External provider choices stay behind contracts and deterministic adapters fail closed in production. See [Architecture](ARCHITECTURE.md), the [slice contracts](docs/architecture/), and [ADRs](docs/decisions/README.md).

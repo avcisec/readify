@@ -14,6 +14,10 @@ export const environmentSchema = z
     LANGUAGE_ANALYZER_ADAPTER: z
       .enum(["recorded", "stanza"])
       .default("recorded"),
+    READIFY_UPLOAD_DIR: z.string().min(1).optional(),
+    READIFY_PDF_EXTRACTOR: z.string().min(1).optional(),
+    READIFY_OCR_DPI: z.coerce.number().int().min(150).max(600).default(300),
+    PYTHON: z.string().min(1).optional(),
     SESSION_COOKIE_NAME: z.string().min(1).default("readify_session"),
   })
   .superRefine((value, context) => {

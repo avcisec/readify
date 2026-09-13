@@ -12,6 +12,7 @@ coverage/
 .cache/
 .pytest_cache/
 __pycache__/
+.venv/
 *.py[cod]
 *.tsbuildinfo
 playwright-report/
@@ -24,6 +25,7 @@ test-results/
 
 # Runtime data and generated media
 data/
+.data/
 tmp/
 *.log
 

@@ -9,12 +9,7 @@ import {
   requireIdempotency,
   service,
 } from "../../../../../server/runtime";
-import {
-  AppError,
-  extractFile,
-  logEvent,
-  maxUploadBytes,
-} from "@readify/platform";
+import { AppError, logEvent, maxUploadBytes } from "@readify/platform";
 
 function hasExpectedSignature(source: "pdf" | "epub", bytes: Buffer): boolean {
   if (source === "pdf") return bytes.subarray(0, 5).toString() === "%PDF-";
@@ -38,33 +33,21 @@ export async function POST(request: NextRequest) {
     const bytes = Buffer.from(await file.arrayBuffer());
     if (extension !== source || !hasExpectedSignature(source, bytes))
       throw new AppError("unsupported_file_type", 422);
-    let chapters;
-    try {
-      chapters = await extractFile(bytes, source);
-    } catch (error) {
-      const code = error instanceof Error ? error.message : "file_parse_failed";
-      logEvent({
-        correlationId,
-        event: "file_import.parse_failed",
-        outcome: code,
-      });
-      if (
-        code === "file_too_large" ||
-        code === "file_no_extractable_text" ||
-        code === "file_drm_unsupported"
-      )
-        throw new AppError(code, 422);
-      throw new AppError("file_parse_failed", 422);
-    }
-    const result = await service.createFileImport(
+    const result = await service.createPendingFileImport(
       identity.userId,
       source,
-      chapters,
+      bytes,
       requireIdempotency(request),
       correlationId,
     );
     return ok(result.body, result.status, correlationId);
   } catch (error) {
+    if (!(error instanceof AppError))
+      logEvent({
+        correlationId,
+        event: "file_import.unexpected_error",
+        outcome: error instanceof Error ? error.message : "unknown_error",
+      });
     return problem(error, correlationId);
   }
 }

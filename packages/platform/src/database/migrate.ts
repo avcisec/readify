@@ -8,6 +8,8 @@ import { initialMigration } from "./migrations/001_initial";
 import { sliceQueryIndexesMigration } from "./migrations/002_slice_query_indexes";
 import { vocabularyLearningStagesMigration } from "./migrations/003_vocabulary_learning_stages";
 import { fileSourcesMigration } from "./migrations/004_file_sources";
+import { canonicalDocumentModelMigration } from "./migrations/005_canonical_document_model";
+import { pdfBookReconstructionMigration } from "./migrations/006_pdf_book_reconstruction";
 
 const provider: MigrationProvider = {
   async getMigrations() {
@@ -16,6 +18,8 @@ const provider: MigrationProvider = {
       "002_slice_query_indexes": sliceQueryIndexesMigration,
       "003_vocabulary_learning_stages": vocabularyLearningStagesMigration,
       "004_file_sources": fileSourcesMigration,
+      "005_canonical_document_model": canonicalDocumentModelMigration,
+      "006_pdf_book_reconstruction": pdfBookReconstructionMigration,
     };
   },
 };

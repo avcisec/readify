@@ -18,20 +18,27 @@ def main() -> int:
         sys.stderr.write("stanza is not installed; use the recorded adapter for normal tests\n")
         return 2
 
-    pipeline = stanza.Pipeline(
-        "fr",
-        processors="tokenize,mwt,pos,lemma",
-        download_method=None,
-        dir=os.environ.get("STANZA_RESOURCES_DIR"),
-        use_gpu=False,
-        verbose=False,
-    )
+    pipelines = {}
     for line in sys.stdin:
         request = json.loads(line)
         text = request.get("text")
+        language = request.get("language", "fr")
         if not isinstance(text, str) or len(text) > MAX_SCALARS:
             print(json.dumps({"error": "invalid_input"}), flush=True)
             continue
+        if not isinstance(language, str) or not 2 <= len(language) <= 12:
+            print(json.dumps({"error": "invalid_language"}), flush=True)
+            continue
+        if language not in pipelines:
+            pipelines[language] = stanza.Pipeline(
+                language,
+                processors="tokenize,mwt,pos,lemma,depparse",
+                download_method=None,
+                dir=os.environ.get("STANZA_RESOURCES_DIR"),
+                use_gpu=False,
+                verbose=False,
+            )
+        pipeline = pipelines[language]
         document = pipeline(text)
         sentences = []
         for sentence in document.sentences:
@@ -46,7 +53,14 @@ def main() -> int:
                         "surface": token.text,
                         "lemma": lemma,
                         "pos": part_of_speech,
-                        "features": features,
+                        "upos": part_of_speech,
+                        "xpos": analyses[0].xpos if len(analyses) == 1 else None,
+                        "morphologicalFeatures": {
+                            key: value for key, value in
+                            (item.split("=") for item in features.split("|") if "=" in item)
+                        } if features else None,
+                        "dependencyHead": analyses[0].head if len(analyses) == 1 else None,
+                        "dependencyRelation": analyses[0].deprel if len(analyses) == 1 else None,
                         "startScalar": token.start_char,
                         "endScalar": token.end_char,
                     }

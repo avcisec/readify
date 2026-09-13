@@ -1,4 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
 import { sql, type Kysely, type Transaction } from "kysely";
 import {
   NORMALIZATION_VERSION,
@@ -28,7 +30,19 @@ import {
 } from "./language-detection";
 import { logEvent } from "./logging";
 import { RecordedLanguageAnalyzer } from "./language-analyzer";
-import type { ExtractedChapter, FileSourceType } from "./file-import";
+import {
+  extractDocumentFromPath,
+  type ExtractedChapter,
+  type FileSourceType,
+  type ReconstructedParagraph,
+  type SourceAnchor,
+  type SourcePage,
+} from "./file-import";
+import {
+  segmentSentences,
+  sliceSourceAnchors,
+  stableSemanticId,
+} from "./pdf-reconstruction";
 
 type Executor = Kysely<Database> | Transaction<Database>;
 type Clock = () => Date;
@@ -36,6 +50,9 @@ type IdFactory = (prefix: string) => string;
 
 const ALLOWED_RETURN_PATHS = new Set(["/library"]);
 const SAFE_JOB_ERROR_CODES = new Set([
+  "file_no_extractable_text",
+  "file_text_too_large",
+  "file_drm_unsupported",
   "language_analyzer_busy",
   "language_analyzer_cancelled",
   "language_analyzer_input_too_large",
@@ -44,8 +61,18 @@ const SAFE_JOB_ERROR_CODES = new Set([
   "language_analyzer_process_exited",
   "language_analyzer_response_too_large",
   "language_analyzer_timeout",
+  "pdf_password_required",
+  "pdf_extractor_response_too_large",
   "unknown_job_kind",
   "workflow_not_found",
+]);
+
+const NON_RETRYABLE_JOB_ERRORS = new Set([
+  "file_no_extractable_text",
+  "file_text_too_large",
+  "file_drm_unsupported",
+  "pdf_password_required",
+  "pdf_extractor_response_too_large",
 ]);
 
 function classifyJobError(error: unknown): string {
@@ -90,7 +117,7 @@ export class ReadifyService implements SliceApplication {
     }
   }
 
-  private hash(value: string): string {
+  private hash(value: string | Buffer): string {
     return createHash("sha256").update(value).digest("hex");
   }
 
@@ -246,6 +273,7 @@ export class ReadifyService implements SliceApplication {
     chapters: ExtractedChapter[],
     idempotencyKey: string,
     correlationId: string,
+    sourceByteSize = 0,
   ): Promise<ImportCommandResult> {
     if (!chapters.length) throw new AppError("file_no_extractable_text", 422);
     return this.createImport(
@@ -256,7 +284,146 @@ export class ReadifyService implements SliceApplication {
       sourceType,
       chapters[0]?.title,
       chapters.map((chapter) => chapter.title),
+      chapters.flatMap((chapter) => chapter.pages ?? []),
+      sourceByteSize,
+      chapters.map((chapter) => {
+        const pages = chapter.pages ?? [];
+        return pages.length
+          ? { start: pages[0]!.number, end: pages.at(-1)!.number }
+          : null;
+      }),
+      {
+        chapters: chapters.map(({ pages: _pages, ...chapter }) => chapter),
+      },
     );
+  }
+
+  /** Accepts bytes quickly; extraction is performed by the durable worker job. */
+  async createPendingFileImport(
+    userId: string,
+    sourceType: FileSourceType,
+    bytes: Buffer,
+    idempotencyKey: string,
+    correlationId: string,
+  ): Promise<ImportCommandResult> {
+    const digest = this.hash(bytes);
+    const profile = await this.getProfile(userId);
+    if (!profile) throw new AppError("learning_profile_required", 409);
+    const root =
+      process.env.READIFY_UPLOAD_DIR ?? join(process.cwd(), ".data", "uploads");
+    await fs.mkdir(root, { recursive: true, mode: 0o700 });
+    const objectKey = join(
+      /* turbopackIgnore: true */ root,
+      `${digest}.${sourceType}`,
+    );
+    await fs
+      .writeFile(objectKey, bytes, { flag: "wx", mode: 0o600 })
+      .catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      });
+    const requestHash = this.hash(JSON.stringify({ digest, sourceType }));
+    return this.database.transaction().execute(async (transaction) => {
+      await sql`select pg_advisory_xact_lock(hashtextextended(${`${userId}:${digest}`}, 0))`.execute(
+        transaction,
+      );
+      const idempotent = await sql<{
+        request_hash: string;
+        status: number;
+        response: unknown;
+      }>`select request_hash, status, response from idempotency_records where owner_id=${userId} and operation='create_import' and key=${idempotencyKey} and expires_at > ${this.timestamp()}`.execute(
+        transaction,
+      );
+      if (idempotent.rows[0]) {
+        if (idempotent.rows[0].request_hash !== requestHash)
+          throw new AppError("idempotency_key_reused", 409);
+        return {
+          status: idempotent.rows[0].status,
+          body: idempotent.rows[0].response as ImportCommandResult["body"],
+        };
+      }
+      const existing = await sql<{
+        id: string;
+      }>`select id from source_revisions where owner_id=${userId} and account_digest=${digest}`.execute(
+        transaction,
+      );
+      let status = 202;
+      let body: ImportCommandResult["body"];
+      if (existing.rows[0]) {
+        status = 200;
+        const failed = await sql<{
+          import_id: string;
+          asset_id: string;
+          object_key: string;
+          asset_type: FileSourceType;
+        }>`select l.import_id, a.id as asset_id, a.object_key, a.asset_type from library_items l join import_workflows w on w.id=l.import_id join source_assets a on a.source_revision_id=l.source_revision_id where l.owner_id=${userId} and l.source_revision_id=${existing.rows[0].id} and w.overall='failed' and w.stage='complete' limit 1`.execute(
+          transaction,
+        );
+        if (failed.rows[0]) {
+          await sql`update import_workflows set overall='processing', stage='extracting', text_capability='pending', word_tools_capability='pending', error_code=null, error_reference_id=null, retryable_capabilities='{}', version=version+1, updated_at=${this.timestamp()} where id=${failed.rows[0].import_id}`.execute(
+            transaction,
+          );
+          await this.enqueue(
+            transaction,
+            "extract_file",
+            userId,
+            failed.rows[0].import_id,
+            correlationId,
+            {
+              assetId: failed.rows[0].asset_id,
+              objectKey: failed.rows[0].object_key,
+              sourceType: failed.rows[0].asset_type,
+              language: profile.targetLanguage,
+            },
+          );
+        }
+        body = {
+          outcome: "duplicate",
+          libraryItem: await this.libraryItemByRevision(
+            transaction,
+            userId,
+            existing.rows[0].id,
+          ),
+        };
+      } else {
+        const revisionId = this.id("rev");
+        const importId = this.id("imp");
+        const libraryItemId = this.id("lib");
+        const now = this.timestamp();
+        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, language_code, created_at) values (${revisionId}, ${userId}, ${""}, ${NORMALIZATION_VERSION}, ${digest}, ${profile.targetLanguage}, ${now})`.execute(
+          transaction,
+        );
+        await sql`insert into import_workflows (id, owner_id, source_revision_id, stage, text_capability, word_tools_capability, updated_at) values (${importId}, ${userId}, ${revisionId}, 'extracting', 'pending', 'pending', ${now})`.execute(
+          transaction,
+        );
+        await sql`insert into library_items (id, owner_id, import_id, source_revision_id, title, source_type, created_at) values (${libraryItemId}, ${userId}, ${importId}, ${revisionId}, ${sourceType === "pdf" ? "PDF kitabı" : "EPUB kitabı"}, ${sourceType}, ${now})`.execute(
+          transaction,
+        );
+        const assetId = this.id("asset");
+        await sql`insert into source_assets (id, source_revision_id, asset_type, object_key, byte_size, checksum, mime_type, created_at) values (${assetId}, ${revisionId}, ${sourceType}, ${objectKey}, ${bytes.byteLength}, ${digest}, ${sourceType === "pdf" ? "application/pdf" : "application/epub+zip"}, ${now})`.execute(
+          transaction,
+        );
+        await this.enqueue(
+          transaction,
+          "extract_file",
+          userId,
+          importId,
+          correlationId,
+          { assetId, objectKey, sourceType, language: profile.targetLanguage },
+        );
+        body = {
+          outcome: "created",
+          libraryItem: await this.libraryItemById(
+            transaction,
+            userId,
+            libraryItemId,
+          ),
+        };
+      }
+      await sql`insert into idempotency_records (owner_id, operation, key, request_hash, status, response, expires_at, created_at) values (${userId}, 'create_import', ${idempotencyKey}, ${requestHash}, ${status}, ${JSON.stringify(body)}::jsonb, ${new Date(this.now().getTime() + 86_400_000).toISOString()}, ${this.timestamp()})`.execute(
+        transaction,
+      );
+      return { status, body };
+    });
   }
 
   private async createImport(
@@ -267,11 +434,15 @@ export class ReadifyService implements SliceApplication {
     sourceType: "pasted_text" | FileSourceType,
     titleOverride?: string,
     sectionTitles: string[] = [],
+    sourcePages: SourcePage[] = [],
+    sourceByteSize = 0,
+    sectionPageRanges: Array<{ start: number; end: number } | null> = [],
+    documentStructure?: { chapters: ExtractedChapter[] },
   ): Promise<ImportCommandResult> {
     if (!idempotencyKey || idempotencyKey.length > 200)
       throw new AppError("idempotency_key_required", 400);
-    if (!(await this.getProfile(userId)))
-      throw new AppError("learning_profile_required", 409);
+    const profile = await this.getProfile(userId);
+    if (!profile) throw new AppError("learning_profile_required", 409);
     let normalized;
     try {
       normalized = normalizePastedText(
@@ -350,7 +521,7 @@ export class ReadifyService implements SliceApplication {
         const importId = this.id("imp");
         const libraryItemId = this.id("lib");
         const now = this.timestamp();
-        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, section_titles, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${JSON.stringify(sectionTitles)}::jsonb, ${now})`.execute(
+        await sql`insert into source_revisions (id, owner_id, normalized_text, normalization_version, account_digest, language_code, section_titles, section_page_ranges, document_structure, created_at) values (${revisionId}, ${userId}, ${normalized.text}, ${NORMALIZATION_VERSION}, ${digest}, ${profile.targetLanguage}, ${JSON.stringify(sectionTitles)}::jsonb, ${JSON.stringify(sectionPageRanges)}::jsonb, ${documentStructure ? JSON.stringify(documentStructure) : null}::jsonb, ${now})`.execute(
           transaction,
         );
         await sql`insert into import_workflows (id, owner_id, source_revision_id, stage, text_capability, word_tools_capability, updated_at) values (${importId}, ${userId}, ${revisionId}, 'queued', 'pending', 'pending', ${now})`.execute(
@@ -359,6 +530,21 @@ export class ReadifyService implements SliceApplication {
         await sql`insert into library_items (id, owner_id, import_id, source_revision_id, title, source_type, created_at) values (${libraryItemId}, ${userId}, ${importId}, ${revisionId}, ${normalized.title}, ${sourceType}, ${now})`.execute(
           transaction,
         );
+        if (sourceType !== "pasted_text" && sourcePages.length) {
+          const assetId = this.id("asset");
+          await sql`insert into source_assets (id, source_revision_id, asset_type, object_key, byte_size, checksum, mime_type, created_at) values (${assetId}, ${revisionId}, ${sourceType}, ${`extracted://${digest}`}, ${sourceByteSize}, ${digest}, ${sourceType === "pdf" ? "application/pdf" : "application/epub+zip"}, ${now})`.execute(
+            transaction,
+          );
+          const uniquePages = new Map(
+            sourcePages.map((page) => [page.number, page]),
+          );
+          for (const page of uniquePages.values()) {
+            const pageId = stableSemanticId("page", revisionId, page.number);
+            await sql`insert into source_pages (id, source_asset_id, page_number, extracted_text, extraction_status, metadata, stable_key, raw_text, quality_status, quality_score, warnings) values (${pageId}, ${assetId}, ${page.number}, ${page.text}, ${page.text ? (page.ocr ? "ocr" : "native") : "unusable"}, ${JSON.stringify({ width: page.width, height: page.height, rotation: page.rotation, blocks: page.blocks, words: page.words })}::jsonb, ${pageId}, ${page.rawText ?? page.text}, ${page.qualityStatus ?? (page.text ? "native_suspicious" : "failed")}, ${page.qualityScore ?? null}, ${JSON.stringify(page.warnings ?? [])}::jsonb)`.execute(
+              transaction,
+            );
+          }
+        }
         await this.enqueue(
           transaction,
           "prepare_text",
@@ -515,6 +701,7 @@ export class ReadifyService implements SliceApplication {
           correlation_id: string;
           attempt: number;
           max_attempts: number;
+          payload: Record<string, unknown>;
         }>`
         with candidate as (
           select id from jobs where status='queued' and available_at <= ${this.timestamp()}
@@ -522,7 +709,7 @@ export class ReadifyService implements SliceApplication {
         )
         update jobs j set status='running', attempt=j.attempt+1, lease_until=${new Date(this.now().getTime() + 30_000).toISOString()}, heartbeat_at=${this.timestamp()}, updated_at=${this.timestamp()}
         from candidate where j.id=candidate.id
-        returning j.id, j.kind, j.owner_id, j.subject_id, j.correlation_id, j.attempt, j.max_attempts
+        returning j.id, j.kind, j.owner_id, j.subject_id, j.correlation_id, j.attempt, j.max_attempts, j.payload
       `.execute(transaction);
         return result.rows[0];
       });
@@ -548,7 +735,19 @@ export class ReadifyService implements SliceApplication {
         );
     }, 10_000);
     try {
-      if (job.kind === "prepare_text")
+      if (job.kind === "extract_file")
+        await this.extractFileJob(
+          job.owner_id,
+          job.subject_id,
+          job.correlation_id,
+          job.payload as {
+            assetId: string;
+            objectKey: string;
+            sourceType: FileSourceType;
+            language?: string;
+          },
+        );
+      else if (job.kind === "prepare_text")
         await this.prepareText(
           job.owner_id,
           job.subject_id,
@@ -571,7 +770,10 @@ export class ReadifyService implements SliceApplication {
         outcome: "succeeded",
       });
     } catch (error) {
-      const retry = job.attempt < job.max_attempts;
+      const rawCode = error instanceof Error ? error.message : "unknown_error";
+      const retry =
+        job.attempt < job.max_attempts &&
+        !NON_RETRYABLE_JOB_ERRORS.has(rawCode);
       const code = classifyJobError(error);
       await sql`update jobs set status=${retry ? "queued" : "failed"}::job_status, available_at=${new Date(this.now().getTime() + Math.min(30_000, 1000 * 2 ** job.attempt)).toISOString()}, lease_until=null, last_error_code=${code}, updated_at=${this.timestamp()} where id=${job.id}`.execute(
         this.database,
@@ -584,12 +786,140 @@ export class ReadifyService implements SliceApplication {
         stage: job.kind,
         attempt: job.attempt,
         durationMs: Date.now() - startedAt,
-        outcome: retry ? "retry_scheduled" : "failed",
+        outcome: `${retry ? "retry_scheduled" : "failed"}:${code}`,
       });
     } finally {
       clearInterval(heartbeat);
     }
     return true;
+  }
+
+  private async extractFileJob(
+    ownerId: string,
+    importId: string,
+    correlationId: string,
+    payload: {
+      assetId: string;
+      objectKey: string;
+      sourceType: FileSourceType;
+      language?: string;
+    },
+  ): Promise<void> {
+    const claimed = await sql<{
+      revision_id: string;
+      language_code: string;
+      stage: string;
+    }>`select w.source_revision_id as revision_id, r.language_code, w.stage from import_workflows w join source_revisions r on r.id=w.source_revision_id where w.id=${importId} and w.owner_id=${ownerId}`.execute(
+      this.database,
+    );
+    if (!claimed.rows[0]) throw new Error("workflow_not_found");
+    if (claimed.rows[0].stage !== "extracting") return;
+    const revisionId = claimed.rows[0].revision_id;
+    const checkpoints = await sql<{
+      page_number: number;
+      extracted_text: string;
+      raw_text: string | null;
+      extraction_status: "native" | "ocr" | "unusable";
+      quality_status: SourcePage["qualityStatus"];
+      quality_score: number | null;
+      warnings: string[];
+      metadata: {
+        width?: number;
+        height?: number;
+        rotation?: number;
+        blocks?: SourcePage["blocks"];
+        words?: SourcePage["words"];
+      };
+    }>`select page_number, extracted_text, raw_text, extraction_status, quality_status, quality_score, warnings, metadata from source_pages where source_asset_id=${payload.assetId} and quality_status <> 'failed' order by page_number`.execute(
+      this.database,
+    );
+    const existingPages: SourcePage[] = checkpoints.rows.map((page) => ({
+      number: page.page_number,
+      width: page.metadata.width,
+      height: page.metadata.height,
+      rotation: page.metadata.rotation,
+      rawText: page.raw_text ?? page.extracted_text,
+      text: page.extracted_text,
+      ocr: page.extraction_status === "ocr",
+      qualityStatus: page.quality_status,
+      qualityScore: page.quality_score ?? undefined,
+      warnings: page.warnings,
+      blocks: page.metadata.blocks ?? [],
+      words: page.metadata.words,
+    }));
+    const document = await extractDocumentFromPath(
+      payload.objectKey,
+      payload.sourceType,
+      payload.language ?? claimed.rows[0].language_code,
+      async (page) => this.persistSourcePage(payload.assetId, revisionId, page),
+      existingPages,
+    );
+    const chapters = document.chapters;
+    await this.database.transaction().execute(async (transaction) => {
+      const workflow = await sql<{
+        revision_id: string;
+        stage: string;
+      }>`select source_revision_id as revision_id, stage from import_workflows where id=${importId} and owner_id=${ownerId} for update`.execute(
+        transaction,
+      );
+      if (!workflow.rows[0]) throw new Error("workflow_not_found");
+      if (workflow.rows[0].stage !== "extracting") return;
+      const text = chapters.map((chapter) => chapter.text).join("\f");
+      if ([...text].length > MAX_FILE_TEXT_SCALARS)
+        throw new Error("file_text_too_large");
+      const titles = chapters.map((chapter) => chapter.title);
+      const ranges = chapters.map((chapter) => {
+        const pages = chapter.pages ?? [];
+        return pages.length
+          ? { start: pages[0]!.number, end: pages.at(-1)!.number }
+          : null;
+      });
+      const structure = {
+        chapters: chapters.map(({ pages: _pages, ...chapter }) => chapter),
+        versions: document.versions,
+      };
+      await sql`update source_revisions set normalized_text=${text}, section_titles=${JSON.stringify(titles)}::jsonb, section_page_ranges=${JSON.stringify(ranges)}::jsonb, document_structure=${JSON.stringify(structure)}::jsonb, document_metadata=${JSON.stringify(document.metadata)}::jsonb, import_quality_report=${JSON.stringify(document.quality)}::jsonb, extraction_version=${document.versions.extraction}, reconstruction_version=${document.versions.reconstruction}, pipeline_config_hash=${document.versions.configuration} where id=${workflow.rows[0].revision_id}`.execute(
+        transaction,
+      );
+      if (document.metadata.title?.trim())
+        await sql`update library_items set title=${[...document.metadata.title.trim()].slice(0, 80).join("")} where import_id=${importId} and owner_id=${ownerId}`.execute(
+          transaction,
+        );
+      for (const page of document.pages) {
+        const pageId = stableSemanticId(
+          "page",
+          workflow.rows[0].revision_id,
+          page.number,
+        );
+        await sql`insert into source_pages (id, source_asset_id, page_number, extracted_text, extraction_status, metadata, stable_key, raw_text, quality_status, quality_score, warnings) values (${pageId}, ${payload.assetId}, ${page.number}, ${page.text}, ${page.text ? (page.ocr ? "ocr" : "native") : "unusable"}, ${JSON.stringify({ width: page.width, height: page.height, rotation: page.rotation, blocks: page.blocks, words: page.words, extractor: document.versions.extraction })}::jsonb, ${pageId}, ${page.rawText ?? page.text}, ${page.qualityStatus ?? (page.text ? "native_suspicious" : "failed")}, ${page.qualityScore ?? null}, ${JSON.stringify(page.warnings ?? [])}::jsonb)
+          on conflict (source_asset_id, page_number) do update set extracted_text=excluded.extracted_text, extraction_status=excluded.extraction_status, metadata=excluded.metadata, stable_key=excluded.stable_key, raw_text=excluded.raw_text, quality_status=excluded.quality_status, quality_score=excluded.quality_score, warnings=excluded.warnings`.execute(
+          transaction,
+        );
+      }
+      await sql`update import_workflows set stage='preparing_text', version=version+1, updated_at=${this.timestamp()} where id=${importId} and owner_id=${ownerId}`.execute(
+        transaction,
+      );
+      await this.enqueue(
+        transaction,
+        "prepare_text",
+        ownerId,
+        importId,
+        correlationId,
+        {},
+      );
+    });
+  }
+
+  private async persistSourcePage(
+    assetId: string,
+    revisionId: string,
+    page: SourcePage,
+  ): Promise<void> {
+    const pageId = stableSemanticId("page", revisionId, page.number);
+    await sql`insert into source_pages (id, source_asset_id, page_number, extracted_text, extraction_status, metadata, stable_key, raw_text, quality_status, quality_score, warnings) values (${pageId}, ${assetId}, ${page.number}, ${page.text}, ${page.text ? (page.ocr ? "ocr" : "native") : "unusable"}, ${JSON.stringify({ width: page.width, height: page.height, rotation: page.rotation, blocks: page.blocks, words: page.words })}::jsonb, ${pageId}, ${page.rawText ?? page.text}, ${page.qualityStatus ?? (page.text ? "native_suspicious" : "failed")}, ${page.qualityScore ?? null}, ${JSON.stringify(page.warnings ?? [])}::jsonb)
+      on conflict (source_asset_id, page_number) do update set extracted_text=excluded.extracted_text, extraction_status=excluded.extraction_status, metadata=excluded.metadata, stable_key=excluded.stable_key, raw_text=excluded.raw_text, quality_status=excluded.quality_status, quality_score=excluded.quality_score, warnings=excluded.warnings`.execute(
+      this.database,
+    );
   }
 
   private async prepareText(
@@ -602,49 +932,132 @@ export class ReadifyService implements SliceApplication {
         revision_id: string;
         normalized_text: string;
         section_titles: string[];
+        section_page_ranges: Array<{ start: number; end: number } | null>;
+        language_code: string;
+        document_structure: {
+          chapters?: ExtractedChapter[];
+        } | null;
+        stage: string;
         version: number;
       }>`
-        select w.source_revision_id as revision_id, r.normalized_text, r.section_titles, w.version
+        select w.source_revision_id as revision_id, r.normalized_text, r.section_titles, r.section_page_ranges, r.language_code, r.document_structure, w.stage, w.version
         from import_workflows w join source_revisions r on r.id=w.source_revision_id
         where w.id=${importId} and w.owner_id=${ownerId} for update
       `.execute(transaction);
       const workflow = result.rows[0];
       if (!workflow) throw new Error("workflow_not_found");
+      if (!new Set(["queued", "preparing_text"]).has(workflow.stage)) return;
       const existing = await sql<{
         id: string;
       }>`select id from sections where source_revision_id=${workflow.revision_id}`.execute(
         transaction,
       );
+      if (existing.rows[0]) {
+        const completedAnalysis = await sql<{
+          id: string;
+        }>`select id from language_analyses where source_revision_id=${workflow.revision_id}`.execute(
+          transaction,
+        );
+        if (completedAnalysis.rows[0]) return;
+      }
       if (!existing.rows[0]) {
         const sections = workflow.normalized_text.split(/\f/gu);
+        const pageRows = await sql<{ id: string; page_number: number }>`
+          select p.id, p.page_number from source_pages p
+          join source_assets a on a.id=p.source_asset_id
+          where a.source_revision_id=${workflow.revision_id}
+        `.execute(transaction);
+        const pageIds = new Map(
+          pageRows.rows.map((page) => [page.page_number, page.id]),
+        );
         for (const [sectionOrdinal, sectionText] of sections.entries()) {
-          const sectionId = this.id("sec");
+          const canonical =
+            workflow.document_structure?.chapters?.[sectionOrdinal];
           const title =
+            canonical?.title ??
             workflow.section_titles[sectionOrdinal] ??
             `Bölüm ${sectionOrdinal + 1}`;
-          await sql`insert into sections (id, source_revision_id, ordinal, title) values (${sectionId}, ${workflow.revision_id}, ${sectionOrdinal}, ${title})`.execute(
+          const sectionId = stableSemanticId(
+            "sec",
+            workflow.revision_id,
+            sectionOrdinal,
+            title,
+          );
+          const sectionAnchors = canonical?.anchors ?? [];
+          const anchorPages = sectionAnchors.map((anchor) => anchor.pageNumber);
+          const fallbackRange =
+            workflow.section_page_ranges?.[sectionOrdinal] ?? null;
+          const pageRange = anchorPages.length
+            ? { start: Math.min(...anchorPages), end: Math.max(...anchorPages) }
+            : fallbackRange;
+          await sql`insert into sections (id, source_revision_id, ordinal, title, source_page_start, source_page_end, stable_key, role, heading_path, detection_confidence, source_text) values (${sectionId}, ${workflow.revision_id}, ${sectionOrdinal}, ${title}, ${pageRange?.start ?? null}, ${pageRange?.end ?? null}, ${sectionId}, ${canonical?.role ?? "body"}, ${JSON.stringify(canonical?.headingPath ?? [])}::jsonb, ${canonical?.confidence ?? null}, ${canonical?.sourceText ?? sectionText})`.execute(
             transaction,
           );
-          const paragraphs = sectionText.split(/\n[ \t]*\n/gu);
-          for (const [
-            paragraphOrdinal,
-            paragraphText,
-          ] of paragraphs.entries()) {
-            const paragraphId = this.id("par");
-            await sql`insert into paragraphs (id, section_id, ordinal, text) values (${paragraphId}, ${sectionId}, ${paragraphOrdinal}, ${paragraphText})`.execute(
+          await this.insertSourceAnchors(
+            transaction,
+            "section",
+            sectionId,
+            sectionAnchors,
+            pageIds,
+          );
+          const paragraphs: ReconstructedParagraph[] =
+            canonical?.paragraphs ??
+            sectionText.split(/\n[ \t]*\n/gu).map((text) => ({
+              sourceText: text,
+              displayText: text,
+              anchors: [],
+              role: "body" as const,
+            }));
+          for (const [paragraphOrdinal, paragraph] of paragraphs.entries()) {
+            const paragraphText = paragraph.displayText;
+            const paragraphId = stableSemanticId(
+              "par",
+              sectionId,
+              paragraphOrdinal,
+              paragraphText,
+            );
+            const paragraphPages = paragraph.anchors.map(
+              (anchor) => anchor.pageNumber,
+            );
+            const paragraphRange = paragraphPages.length
+              ? {
+                  start: Math.min(...paragraphPages),
+                  end: Math.max(...paragraphPages),
+                }
+              : pageRange;
+            await sql`insert into paragraphs (id, section_id, ordinal, text, source_page_start, source_page_end, source_start_scalar, source_end_scalar, stable_key, source_text, role) values (${paragraphId}, ${sectionId}, ${paragraphOrdinal}, ${paragraphText}, ${paragraphRange?.start ?? null}, ${paragraphRange?.end ?? null}, ${0}, ${[...paragraph.sourceText].length}, ${paragraphId}, ${paragraph.sourceText}, ${paragraph.role ?? "body"})`.execute(
               transaction,
             );
-            const sentenceMatches = [
-              ...paragraphText.matchAll(/[^.!?]+(?:[.!?]+|$)/gu),
-            ].filter((match) => match[0].length > 0);
-            for (const [sentenceOrdinal, match] of sentenceMatches.entries()) {
-              const sentenceText = match[0];
-              const startScalar = [...paragraphText.slice(0, match.index)]
-                .length;
-              const endScalar = startScalar + [...sentenceText].length;
-              const sentenceId = this.id("sen");
-              await sql`insert into sentences (id, paragraph_id, ordinal, start_scalar, end_scalar, text) values (${sentenceId}, ${paragraphId}, ${sentenceOrdinal}, ${startScalar}, ${endScalar}, ${sentenceText})`.execute(
+            await this.insertSourceAnchors(
+              transaction,
+              "paragraph",
+              paragraphId,
+              paragraph.anchors,
+              pageIds,
+            );
+            const sentences = segmentSentences(
+              paragraph,
+              workflow.language_code,
+            );
+            for (const [sentenceOrdinal, sentence] of sentences.entries()) {
+              const sentencePages = sentence.anchors.map(
+                (anchor) => anchor.pageNumber,
+              );
+              const sentenceId = stableSemanticId(
+                "sen",
+                paragraphId,
+                sentenceOrdinal,
+                sentence.text,
+              );
+              await sql`insert into sentences (id, paragraph_id, ordinal, start_scalar, end_scalar, text, source_page_start, source_page_end, stable_key, source_text) values (${sentenceId}, ${paragraphId}, ${sentenceOrdinal}, ${sentence.startScalar}, ${sentence.endScalar}, ${sentence.text}, ${sentencePages.length ? Math.min(...sentencePages) : (paragraphRange?.start ?? null)}, ${sentencePages.length ? Math.max(...sentencePages) : (paragraphRange?.end ?? null)}, ${sentenceId}, ${sentence.text})`.execute(
                 transaction,
+              );
+              await this.insertSourceAnchors(
+                transaction,
+                "sentence",
+                sentenceId,
+                sentence.anchors,
+                pageIds,
               );
             }
           }
@@ -664,20 +1077,44 @@ export class ReadifyService implements SliceApplication {
     });
   }
 
+  private async insertSourceAnchors(
+    executor: Executor,
+    entityType: "section" | "paragraph" | "sentence" | "occurrence",
+    entityId: string,
+    anchors: SourceAnchor[],
+    pageIds: Map<number, string>,
+  ): Promise<void> {
+    for (const [ordinal, anchor] of anchors.entries()) {
+      const pageId = pageIds.get(anchor.pageNumber);
+      if (!pageId) continue;
+      const anchorId = stableSemanticId(
+        "anchor",
+        entityType,
+        entityId,
+        ordinal,
+      );
+      await sql`insert into content_source_anchors (id, entity_type, entity_id, ordinal, source_page_id, source_start_scalar, source_end_scalar, display_start_scalar, display_end_scalar, bbox, block_id, line_id, word_ids) values (${anchorId}, ${entityType}, ${entityId}, ${ordinal}, ${pageId}, ${anchor.sourceStartScalar}, ${anchor.sourceEndScalar}, ${anchor.displayStartScalar}, ${anchor.displayEndScalar}, ${anchor.bbox ? JSON.stringify(anchor.bbox) : null}::jsonb, ${anchor.blockId ?? null}, ${anchor.lineId ?? null}, ${JSON.stringify(anchor.wordIds ?? [])}::jsonb) on conflict (entity_type, entity_id, ordinal) do update set source_page_id=excluded.source_page_id, source_start_scalar=excluded.source_start_scalar, source_end_scalar=excluded.source_end_scalar, display_start_scalar=excluded.display_start_scalar, display_end_scalar=excluded.display_end_scalar, bbox=excluded.bbox, block_id=excluded.block_id, line_id=excluded.line_id, word_ids=excluded.word_ids`.execute(
+        executor,
+      );
+    }
+  }
+
   private async completeLanguageAnalysis(
     ownerId: string,
     importId: string,
   ): Promise<void> {
     const sentences = await sql<{
       revision_id: string;
+      language_code: string;
       id: string;
       paragraph_id: string;
       ordinal: number;
       start_scalar: number;
       text: string;
     }>`
-      select w.source_revision_id as revision_id, s.id, s.paragraph_id, s.ordinal, s.start_scalar, s.text
+      select w.source_revision_id as revision_id, r.language_code, s.id, s.paragraph_id, s.ordinal, s.start_scalar, s.text
       from import_workflows w join sections se on se.source_revision_id=w.source_revision_id
+      join source_revisions r on r.id=w.source_revision_id
       join paragraphs p on p.section_id=se.id join sentences s on s.paragraph_id=p.id
       where w.id=${importId} and w.owner_id=${ownerId} order by p.ordinal, s.ordinal
     `.execute(this.database);
@@ -692,6 +1129,7 @@ export class ReadifyService implements SliceApplication {
       const result = await this.languageAnalyzer.analyze(
         sentence.text,
         AbortSignal.timeout(35_000),
+        sentence.language_code,
       );
       if (
         provider &&
@@ -726,21 +1164,84 @@ export class ReadifyService implements SliceApplication {
         transaction,
       );
       if (!existing.rows[0]) {
-        for (const entry of analyzed)
+        const allSentenceAnchors = await sql<{
+          entity_id: string;
+          source_page_id: string;
+          ordinal: number;
+          source_start_scalar: number;
+          source_end_scalar: number;
+          display_start_scalar: number;
+          display_end_scalar: number;
+          bbox: unknown;
+          block_id: string | null;
+          line_id: string | null;
+          word_ids: string[];
+        }>`select entity_id, source_page_id, ordinal, source_start_scalar, source_end_scalar, display_start_scalar, display_end_scalar, bbox, block_id, line_id, word_ids from content_source_anchors where entity_type='sentence' and entity_id = any(${sentences.rows.map((sentence) => sentence.id)}) order by entity_id, ordinal`.execute(
+          transaction,
+        );
+        const anchorsBySentence = new Map<
+          string,
+          typeof allSentenceAnchors.rows
+        >();
+        const lemmaIds = new Map<string, string>();
+        for (const anchor of allSentenceAnchors.rows) {
+          const values = anchorsBySentence.get(anchor.entity_id) ?? [];
+          values.push(anchor);
+          anchorsBySentence.set(anchor.entity_id, values);
+        }
+        for (const entry of analyzed) {
+          const sentenceAnchors =
+            anchorsBySentence.get(entry.sentence.id) ?? [];
           for (const [tokenOrdinal, token] of entry.tokens.entries()) {
-            await sql`insert into lemmas (id, language, normalized_lemma, part_of_speech) values (${this.id("lem")}, 'fr', ${token.lemma}, ${token.partOfSpeech}) on conflict (language, normalized_lemma, part_of_speech, policy_version) do nothing`.execute(
+            const lemmaKey = `${entry.sentence.language_code}\u001f${token.lemma}\u001f${token.partOfSpeech}`;
+            let lemmaId = lemmaIds.get(lemmaKey);
+            if (!lemmaId) {
+              const proposedLemmaId = `lem_${this.hash(`${lemmaKey}\u001f1`).slice(0, 32)}`;
+              const lemma = await sql<{
+                id: string;
+              }>`insert into lemmas (id, language, normalized_lemma, part_of_speech) values (${proposedLemmaId}, ${entry.sentence.language_code}, ${token.lemma}, ${token.partOfSpeech}) on conflict (language, normalized_lemma, part_of_speech, policy_version) do update set normalized_lemma=excluded.normalized_lemma returning id`.execute(
+                transaction,
+              );
+              lemmaId = lemma.rows[0]?.id;
+              if (!lemmaId) throw new Error("lemma_upsert_failed");
+              lemmaIds.set(lemmaKey, lemmaId);
+            }
+            const occurrenceId = stableSemanticId(
+              "occ",
+              entry.sentence.id,
+              tokenOrdinal,
+              token.surface,
+            );
+            await sql`insert into occurrences (id, paragraph_id, sentence_id, lemma_id, ordinal, surface, normalized_form, upos, xpos, morphological_features, dependency_head_ordinal, dependency_relation, start_scalar, end_scalar, stable_key) values (${occurrenceId}, ${entry.sentence.paragraph_id}, ${entry.sentence.id}, ${lemmaId}, ${entry.sentence.ordinal * 10_000 + tokenOrdinal}, ${token.surface}, ${token.lemma}, ${token.upos ?? token.partOfSpeech}, ${token.xpos ?? null}, ${token.morphologicalFeatures ? JSON.stringify(token.morphologicalFeatures) : null}::jsonb, ${token.dependencyHead ?? null}, ${token.dependencyRelation ?? null}, ${entry.sentence.start_scalar + token.startScalar}, ${entry.sentence.start_scalar + token.endScalar}, ${occurrenceId}) on conflict (paragraph_id, ordinal) do nothing`.execute(
               transaction,
             );
-            const lemma = await sql<{
-              id: string;
-            }>`select id from lemmas where language='fr' and normalized_lemma=${token.lemma} and part_of_speech=${token.partOfSpeech} and policy_version=1`.execute(
-              transaction,
+            const tokenAnchors = sliceSourceAnchors(
+              sentenceAnchors.map((anchor) => ({
+                // Carries the source-anchor ordinal through the pure slicing helper.
+                pageNumber: anchor.ordinal,
+                sourceStartScalar: anchor.source_start_scalar,
+                sourceEndScalar: anchor.source_end_scalar,
+                displayStartScalar: anchor.display_start_scalar,
+                displayEndScalar: anchor.display_end_scalar,
+                bbox: anchor.bbox as SourceAnchor["bbox"],
+                blockId: anchor.block_id ?? undefined,
+                lineId: anchor.line_id ?? undefined,
+                wordIds: anchor.word_ids,
+              })),
+              token.startScalar,
+              token.endScalar,
             );
-            if (!lemma.rows[0]) throw new Error("lemma_upsert_failed");
-            await sql`insert into occurrences (id, paragraph_id, sentence_id, lemma_id, ordinal, surface, start_scalar, end_scalar) values (${this.id("occ")}, ${entry.sentence.paragraph_id}, ${entry.sentence.id}, ${lemma.rows[0].id}, ${entry.sentence.ordinal * 10_000 + tokenOrdinal}, ${token.surface}, ${entry.sentence.start_scalar + token.startScalar}, ${entry.sentence.start_scalar + token.endScalar}) on conflict (paragraph_id, ordinal) do nothing`.execute(
-              transaction,
-            );
+            for (const [anchorOrdinal, anchor] of tokenAnchors.entries()) {
+              const sourcePageId = sentenceAnchors.find(
+                (source) => source.ordinal === anchor.pageNumber,
+              )?.source_page_id;
+              if (!sourcePageId) continue;
+              await sql`insert into content_source_anchors (id, entity_type, entity_id, ordinal, source_page_id, source_start_scalar, source_end_scalar, display_start_scalar, display_end_scalar, bbox, block_id, line_id, word_ids) values (${stableSemanticId("anchor", "occurrence", occurrenceId, anchorOrdinal)}, 'occurrence', ${occurrenceId}, ${anchorOrdinal}, ${sourcePageId}, ${anchor.sourceStartScalar}, ${anchor.sourceEndScalar}, ${anchor.displayStartScalar}, ${anchor.displayEndScalar}, ${anchor.bbox ? JSON.stringify(anchor.bbox) : null}::jsonb, ${anchor.blockId ?? null}, ${anchor.lineId ?? null}, ${JSON.stringify(anchor.wordIds ?? [])}::jsonb) on conflict (entity_type, entity_id, ordinal) do nothing`.execute(
+                transaction,
+              );
+            }
           }
+        }
         await sql`insert into language_analyses (id, source_revision_id, provider, provider_version, created_at) values (${this.id("ana")}, ${result.rows[0].source_revision_id}, ${provider}, ${providerVersion}, ${this.timestamp()})`.execute(
           transaction,
         );

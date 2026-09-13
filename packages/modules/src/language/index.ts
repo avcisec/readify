@@ -4,6 +4,12 @@ export type TokenAnalysis = {
   partOfSpeech: string;
   startScalar: number;
   endScalar: number;
+  /** Universal Dependencies-compatible annotations, when provider supplies them. */
+  upos?: string;
+  xpos?: string;
+  morphologicalFeatures?: Record<string, string>;
+  dependencyHead?: number | null;
+  dependencyRelation?: string;
 };
 
 const LEMMAS: Record<string, string> = {

@@ -1,0 +1,4 @@
+# CPU-only PDF extraction runtime for scripts/extract_pdf.py
+# Tesseract 5 and per-book language packs are OS packages installed separately.
+# PyMuPDF invokes it only for pages classified as OCR-required.
+PyMuPDF==1.26.4

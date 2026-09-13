@@ -5,7 +5,7 @@ Do not silently choose defaults that change product scope, policy, cost, or arch
 ## Media, data, and quality policy
 
 - When may public/licensed artifacts be shared across users, and which originals/derivatives must remain account-scoped?
-- What confidence thresholds choose native extraction, OCR, caption, align-only, ASR, word timing, sentence fallback, or unsynchronized playback?
+- Which measured quality thresholds should block production rollout for PDF reconstruction, caption, align-only, ASR, word timing, sentence fallback, or unsynchronized playback? Initial PDF extraction/OCR decisions are deterministic and versioned by the [PDF import contract](../architecture/pdf-import-contract.md); corpus results may tune them without changing product scope.
 - Which raw inputs/model outputs may be retained for debugging or future quality evaluation, with what consent and redaction?
 - What deletion/recovery window applies to originals, derivatives, learning state, and exported packages?
 - Which model/provider quality, latency, and cost thresholds block rollout or trigger fallback?
@@ -23,4 +23,3 @@ Do not silently choose defaults that change product scope, policy, cost, or arch
 - What portability/deletion scope applies when Plus account export and deletion ship?
 
 Research-specific unanswered questions remain in the [research summaries](../research/README.md).
-

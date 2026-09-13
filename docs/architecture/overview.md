@@ -27,7 +27,7 @@ HTTP requests authenticate, authorize, validate, persist intent, enqueue work, a
 
 The installed baseline is a pinned TypeScript workspace with a React/Next.js web application and server-side application API, a separate Node worker entry point, and PostgreSQL with a database-backed durable queue. The first slice stores bounded pasted text in PostgreSQL; object storage remains a port and is not installed until a file/media slice requires it. Python exists only as the optional versioned Stanza provider process.
 
-The exact current versions and implementation evidence are recorded in the active [first vertical-slice plan](../exec-plans/active/2026-09-01-first-vertical-slice-implementation.md). Repository verification now executes real format, lint, type, unit, PostgreSQL integration, architecture, migration, and security checks; browser acceptance remains a separate required command/CI job.
+The exact current versions and implementation evidence are recorded in active execution plans. Repository verification executes real format, lint, type, unit, PostgreSQL integration, architecture, migration, and security checks; browser acceptance remains a separate required command/CI job. File imports follow the [PDF reconstruction contract](pdf-import-contract.md).
 
 ## Architectural principles
 

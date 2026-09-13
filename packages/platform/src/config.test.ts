@@ -33,4 +33,14 @@ describe("environment gates", () => {
       }),
     ).toThrow(/production rollout is disabled/u);
   });
+
+  it("bounds the CPU OCR resolution", () => {
+    expect(
+      environmentSchema.parse({ ...base, READIFY_OCR_DPI: "300" })
+        .READIFY_OCR_DPI,
+    ).toBe(300);
+    expect(() =>
+      environmentSchema.parse({ ...base, READIFY_OCR_DPI: "1200" }),
+    ).toThrow();
+  });
 });
