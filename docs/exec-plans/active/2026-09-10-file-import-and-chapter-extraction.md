@@ -74,3 +74,21 @@ git diff --check
 - Run the local/private 8–12 PDF quality corpus described in `tests/fixtures/pdf/README.md` with the pinned PyMuPDF/Tesseract runtime.
 - Review chapter boundaries, paragraph boundaries, preserved punctuation and sampled PDF bbox anchors. Record failures as corpus cases before adding heuristics.
 - Push the feature branch, obtain green GitHub Verify/Browser/Documentation workflows and an independent review. Do not close this plan on local evidence alone.
+
+## Stabilization evidence — 2026-09-13
+
+- `bb052e6` — deterministic PyMuPDF/OCR reconstruction, provenance schema, stable semantic IDs, restart-safe page checkpoints.
+- `694fa64` — CI installs the pinned CPU PDF runtime and smoke-tests native extraction plus selective OCR.
+- `e80cb9d` — long Reader chapters use bounded opaque-cursor pages and resume around the saved semantic anchor.
+- `967bcea` — confirmed single-book deletion, vocabulary rehoming, indexed cascades, and idempotent account-scoped source purge.
+- `d252d88` — ignored private-corpus layout and executable expected-manifest quality report.
+- `71546a5` — active-plan inventory aligned with actual acceptance state.
+- `4e4c62f` — local upload paths excluded from broad Next.js filesystem tracing; production build is warning-free.
+
+Local verification after these commits:
+
+- `make verify`: PASS — 11 Python harness tests, formatting/lint/typecheck, 29 unit tests, 8 real-PostgreSQL integration tests, architecture, migrations including all 9 deletion indexes, dependency audit, product and docs.
+- `make pdf-runtime-smoke PYTHON=.venv/bin/python`: PASS — PyMuPDF 1.26.4 native page stayed native; the scanned French page used Tesseract.
+- Synthetic manifest-driven corpus smoke: PASS with chapter precision/recall 1.0 and no OCR mismatch.
+- Browser: Chromium 8/8 and Firefox 8/8 PASS. Local WebKit could not launch because the host lacks `libavif.so.16`; no WebKit test body ran. GitHub Browser installs OS dependencies and remains the authoritative three-engine gate.
+- `pnpm build`: PASS without filesystem-tracing warnings. `git diff --check`: PASS.
