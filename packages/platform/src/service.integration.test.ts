@@ -522,6 +522,11 @@ describe("first vertical slice", () => {
     const mange = firstReader.paragraphs
       .flatMap((paragraph) => paragraph.occurrences)
       .find((occurrence) => occurrence.surface === "mange")!;
+    await service.saveReaderPosition(owner.userId, firstId, {
+      sourceRevisionId: firstReader.sourceRevisionId,
+      sectionId: firstReader.section.id,
+      paragraphId: firstReader.paragraphs[0]!.id,
+    });
     await service.changeVocabularyState(
       owner.userId,
       mange.id,

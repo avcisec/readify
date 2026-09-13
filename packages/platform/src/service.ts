@@ -776,6 +776,9 @@ export class ReadifyService implements SliceApplication {
           );
         }
       }
+      await sql`delete from reader_positions where owner_id=${userId} and library_item_id=${itemId}`.execute(
+        transaction,
+      );
       await sql`delete from jobs where subject_id=${row.import_id}`.execute(
         transaction,
       );

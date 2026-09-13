@@ -424,7 +424,17 @@ test("Library deletion requires confirmation and removes the private item", asyn
 }) => {
   await completeOnboarding(page, emailForAttempt("delete-book"));
   await importFixture(page);
-  await page.getByRole("link", { name: "Kitabı aç" }).click();
+  await openFirstReader(page);
+  const positionSaved = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().includes("/reader-position") &&
+      response.ok(),
+  );
+  await page.locator('.reader-token[tabindex="0"]').first().click();
+  await positionSaved;
+  await page.goBack();
+  await expect(page).toHaveURL(/\/library\/[^/]+$/);
 
   await page.getByRole("button", { name: "Kitabı sil" }).click();
   const confirmation = page.getByRole("dialog", {
