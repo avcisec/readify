@@ -344,7 +344,7 @@ export class ReadifyService implements SliceApplication {
     if (!profile) throw new AppError("learning_profile_required", 409);
     const root =
       process.env.READIFY_UPLOAD_DIR ?? join(process.cwd(), ".data", "uploads");
-    const accountRoot = join(root, userId);
+    const accountRoot = join(/* turbopackIgnore: true */ root, userId);
     await fs.mkdir(accountRoot, { recursive: true, mode: 0o700 });
     const objectKey = join(
       /* turbopackIgnore: true */ accountRoot,
@@ -792,6 +792,7 @@ export class ReadifyService implements SliceApplication {
           {
             objectKey: asset.object_key,
             storageRoot: resolve(
+              /* turbopackIgnore: true */
               process.env.READIFY_UPLOAD_DIR ??
                 join(process.cwd(), ".data", "uploads"),
             ),
@@ -935,11 +936,12 @@ export class ReadifyService implements SliceApplication {
     );
     if (referenced.rows[0]?.exists) return;
     const root = resolve(
+      /* turbopackIgnore: true */
       payload.storageRoot ??
         process.env.READIFY_UPLOAD_DIR ??
         join(process.cwd(), ".data", "uploads"),
     );
-    const objectPath = resolve(payload.objectKey);
+    const objectPath = resolve(/* turbopackIgnore: true */ payload.objectKey);
     if (objectPath === root || !objectPath.startsWith(`${root}${sep}`))
       throw new Error("unsafe_storage_key");
     await fs.rm(objectPath, { force: true });
