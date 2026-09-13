@@ -85,7 +85,7 @@ Library shows user-facing stages: `Sırada`, `Metin hazırlanıyor`, `Dil analiz
 - Each ready chapter has an accessible read action that opens Reader scoped to that section. The item-level Continue action remains available when a saved position exists.
 - The item shows the generated title, `Yapıştırılan metin` source type, current stage, and structural reading position when available.
 - `Devam et` appears after the learner has a saved Reader position; before that the primary action is `Oku`.
-- The slice does not require Library search, source filters, deletion, editing, favorites, recommendations, or multiple-item bulk behavior.
+- The slice does not require Library search, source filters, editing, favorites, recommendations, or multiple-item bulk behavior. Single-item deletion uses an explicit destructive confirmation and returns to Library.
 
 ### Page Reader
 
@@ -145,7 +145,7 @@ The slice does not show active study time, words exposed, Learning Score, daily 
 
 ## Out of scope for this slice
 
-- Markdown, YouTube, subtitles/transcripts, standalone audio, multiple/bulk imports, metadata editing, cancellation, deletion, and Library search/filter. PDF and EPUB file import are defined by the [file import plan](../exec-plans/active/2026-09-10-file-import-and-chapter-extraction.md); audiobook attachment remains deferred.
+- Markdown, YouTube, subtitles/transcripts, standalone audio, multiple/bulk imports, metadata editing, cancellation, and Library search/filter. PDF and EPUB file import are defined by the [file import plan](../exec-plans/active/2026-09-10-file-import-and-chapter-extraction.md); audiobook attachment remains deferred.
 - Audio, TTS, playback, synchronization, karaoke, Sentence View, expression selection, translation, advanced linguistic display, and AI-generated help.
 - Add card, Review/SRS, Recall Confirmed, `.apkg`, progress scoring/time/exposure, goals/streak, heatmap, and CEFR.
 - Interface-language switching, multiple learning languages, themes/fonts, offline behavior, public content, social/community, tutor, or monetization features.

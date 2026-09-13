@@ -419,6 +419,28 @@ test("Reader exposes every paragraph in a long chapter through bounded pages", a
   ).toBeVisible();
 });
 
+test("Library deletion requires confirmation and removes the private item", async ({
+  page,
+}) => {
+  await completeOnboarding(page, emailForAttempt("delete-book"));
+  await importFixture(page);
+  await page.getByRole("link", { name: "Kitabı aç" }).click();
+
+  await page.getByRole("button", { name: "Kitabı sil" }).click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Kitabı silmek istiyor musun?",
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole("button", { name: "Vazgeç" }).click();
+  await expect(confirmation).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Kitabı sil" }).click();
+  await confirmation.getByRole("button", { name: "Kalıcı olarak sil" }).click();
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.locator(".item-card")).toHaveCount(0);
+  await expect(page.getByText("Okuma rafın henüz boş")).toBeVisible();
+});
+
 test("tablet and mobile widths use labeled bottom navigation", async ({
   page,
 }) => {

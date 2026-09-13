@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { sql, type Kysely, type Transaction } from "kysely";
 import {
   NORMALIZATION_VERSION,
@@ -63,6 +63,7 @@ const SAFE_JOB_ERROR_CODES = new Set([
   "language_analyzer_timeout",
   "pdf_password_required",
   "pdf_extractor_response_too_large",
+  "unsafe_storage_key",
   "unknown_job_kind",
   "workflow_not_found",
 ]);
@@ -73,6 +74,12 @@ const NON_RETRYABLE_JOB_ERRORS = new Set([
   "file_drm_unsupported",
   "pdf_password_required",
   "pdf_extractor_response_too_large",
+  "unsafe_storage_key",
+]);
+const WORKFLOW_JOB_KINDS = new Set([
+  "extract_file",
+  "prepare_text",
+  "analyze_language",
 ]);
 const READER_PAGE_SIZE = 50;
 
@@ -118,7 +125,7 @@ export class ReadifyService implements SliceApplication {
     }
   }
 
-  private hash(value: string | Buffer): string {
+  private hash(value: string | Uint8Array): string {
     return createHash("sha256").update(value).digest("hex");
   }
 
@@ -328,7 +335,7 @@ export class ReadifyService implements SliceApplication {
   async createPendingFileImport(
     userId: string,
     sourceType: FileSourceType,
-    bytes: Buffer,
+    bytes: Uint8Array,
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult> {
@@ -337,9 +344,10 @@ export class ReadifyService implements SliceApplication {
     if (!profile) throw new AppError("learning_profile_required", 409);
     const root =
       process.env.READIFY_UPLOAD_DIR ?? join(process.cwd(), ".data", "uploads");
-    await fs.mkdir(root, { recursive: true, mode: 0o700 });
+    const accountRoot = join(root, userId);
+    await fs.mkdir(accountRoot, { recursive: true, mode: 0o700 });
     const objectKey = join(
-      /* turbopackIgnore: true */ root,
+      /* turbopackIgnore: true */ accountRoot,
       `${digest}.${sourceType}`,
     );
     await fs
@@ -712,6 +720,97 @@ export class ReadifyService implements SliceApplication {
     };
   }
 
+  async deleteLibraryItem(
+    userId: string,
+    itemId: string,
+    correlationId: string,
+  ): Promise<void> {
+    await this.database.transaction().execute(async (transaction) => {
+      const item = await sql<{
+        import_id: string;
+        source_revision_id: string;
+      }>`select l.import_id, l.source_revision_id from library_items l
+        join import_workflows w on w.id=l.import_id
+        where l.id=${itemId} and l.owner_id=${userId}
+        for update of l, w`.execute(transaction);
+      const row = item.rows[0];
+      if (!row) throw new AppError("library_item_not_found", 404);
+      const assets = await sql<{
+        object_key: string;
+      }>`select object_key from source_assets where source_revision_id=${row.source_revision_id}`.execute(
+        transaction,
+      );
+      const affectedVocabulary = await sql<{
+        id: string;
+        lemma_id: string;
+      }>`select v.id, v.lemma_id from vocabulary_items v
+        join occurrences o on o.id=v.first_occurrence_id
+        join paragraphs p on p.id=o.paragraph_id
+        join sections s on s.id=p.section_id
+        where v.owner_id=${userId} and s.source_revision_id=${row.source_revision_id}
+        for update of v`.execute(transaction);
+      for (const vocabulary of affectedVocabulary.rows) {
+        const replacement = await sql<{
+          id: string;
+        }>`select o.id from occurrences o
+          join paragraphs p on p.id=o.paragraph_id
+          join sections s on s.id=p.section_id
+          join library_items l on l.source_revision_id=s.source_revision_id
+          where o.lemma_id=${vocabulary.lemma_id} and l.owner_id=${userId} and l.id <> ${itemId}
+          order by l.created_at, p.ordinal, o.ordinal limit 1`.execute(
+          transaction,
+        );
+        if (replacement.rows[0]) {
+          await sql`update vocabulary_items set first_occurrence_id=${replacement.rows[0].id}, updated_at=${this.timestamp()} where id=${vocabulary.id}`.execute(
+            transaction,
+          );
+          await sql`insert into vocabulary_occurrences (vocabulary_item_id, occurrence_id) values (${vocabulary.id}, ${replacement.rows[0].id}) on conflict do nothing`.execute(
+            transaction,
+          );
+        } else {
+          await sql`delete from idempotency_records where owner_id=${userId} and operation in ('vocabulary_change','vocabulary_undo') and response #>> '{vocabularyItem,id}'=${vocabulary.id}`.execute(
+            transaction,
+          );
+          await sql`delete from vocabulary_items where id=${vocabulary.id}`.execute(
+            transaction,
+          );
+        }
+      }
+      await sql`delete from jobs where subject_id=${row.import_id}`.execute(
+        transaction,
+      );
+      await sql`delete from idempotency_records where owner_id=${userId} and operation='create_import' and response #>> '{libraryItem,id}'=${itemId}`.execute(
+        transaction,
+      );
+      for (const asset of assets.rows)
+        await this.enqueue(
+          transaction,
+          "delete_source_asset",
+          userId,
+          row.source_revision_id,
+          correlationId,
+          {
+            objectKey: asset.object_key,
+            storageRoot: resolve(
+              process.env.READIFY_UPLOAD_DIR ??
+                join(process.cwd(), ".data", "uploads"),
+            ),
+          },
+        );
+      await this.enqueue(
+        transaction,
+        "project_progress",
+        userId,
+        row.source_revision_id,
+        correlationId,
+        {},
+      );
+      await sql`delete from source_revisions where id=${row.source_revision_id} and owner_id=${userId}`.execute(
+        transaction,
+      );
+    });
+  }
+
   async claimAndRunOne(): Promise<boolean> {
     const job = await this.database
       .transaction()
@@ -783,6 +882,10 @@ export class ReadifyService implements SliceApplication {
         await this.completeLanguageAnalysis(job.owner_id, job.subject_id);
       else if (job.kind === "project_progress")
         await this.projectProgress(job.owner_id);
+      else if (job.kind === "delete_source_asset")
+        await this.deleteSourceAsset(
+          job.payload as { objectKey: string; storageRoot?: string },
+        );
       else throw new Error("unknown_job_kind");
       await sql`update jobs set status='succeeded', lease_until=null, updated_at=${this.timestamp()} where id=${job.id}`.execute(
         this.database,
@@ -804,7 +907,7 @@ export class ReadifyService implements SliceApplication {
       await sql`update jobs set status=${retry ? "queued" : "failed"}::job_status, available_at=${new Date(this.now().getTime() + Math.min(30_000, 1000 * 2 ** job.attempt)).toISOString()}, lease_until=null, last_error_code=${code}, updated_at=${this.timestamp()} where id=${job.id}`.execute(
         this.database,
       );
-      if (!retry)
+      if (!retry && WORKFLOW_JOB_KINDS.has(job.kind))
         await this.markWorkflowFailure(job.subject_id, job.kind, code);
       logEvent({
         correlationId: job.correlation_id,
@@ -818,6 +921,28 @@ export class ReadifyService implements SliceApplication {
       clearInterval(heartbeat);
     }
     return true;
+  }
+
+  private async deleteSourceAsset(payload: {
+    objectKey: string;
+    storageRoot?: string;
+  }): Promise<void> {
+    if (payload.objectKey.startsWith("extracted://")) return;
+    const referenced = await sql<{
+      exists: boolean;
+    }>`select exists(select 1 from source_assets where object_key=${payload.objectKey}) as exists`.execute(
+      this.database,
+    );
+    if (referenced.rows[0]?.exists) return;
+    const root = resolve(
+      payload.storageRoot ??
+        process.env.READIFY_UPLOAD_DIR ??
+        join(process.cwd(), ".data", "uploads"),
+    );
+    const objectPath = resolve(payload.objectKey);
+    if (objectPath === root || !objectPath.startsWith(`${root}${sep}`))
+      throw new Error("unsafe_storage_key");
+    await fs.rm(objectPath, { force: true });
   }
 
   private async extractFileJob(

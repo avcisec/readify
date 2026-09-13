@@ -16,6 +16,8 @@ received → validating → [extracting for file/remote sources] → normalizing
 
 Stages are a dependency graph, not one opaque job. Optional enrichment can complete later or fail without discarding valid prior artifacts. A user-facing import status is derived from stage records, not a worker's in-memory state.
 
+Source-byte deletion is also a durable idempotent job. It is not an import stage and therefore cannot mutate a deleted or unrelated import workflow when retries are exhausted.
+
 ## Job contract
 
 Every job records:

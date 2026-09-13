@@ -156,6 +156,13 @@ export interface ImportApplication {
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult>;
+  createPendingFileImport(
+    userId: string,
+    sourceType: "pdf" | "epub",
+    bytes: Uint8Array,
+    idempotencyKey: string,
+    correlationId: string,
+  ): Promise<ImportCommandResult>;
   retryCapability(
     userId: string,
     itemId: string,
@@ -171,6 +178,11 @@ export interface LibraryApplication {
   ): Promise<{ items: LibraryItemView[]; nextCursor: null }>;
   getLibraryItem(userId: string, itemId: string): Promise<LibraryItemView>;
   getBookIndex(userId: string, itemId: string): Promise<BookIndexView>;
+  deleteLibraryItem(
+    userId: string,
+    itemId: string,
+    correlationId: string,
+  ): Promise<void>;
 }
 
 export interface ReaderApplication {

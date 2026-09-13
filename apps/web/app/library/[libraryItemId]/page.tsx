@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppNav } from "../../../components/app-nav";
+import { DeleteLibraryItem } from "../../../components/delete-library-item";
 import { ApiProblem, api, turkishProblem } from "../../../lib/api";
 
 type Book = {
@@ -82,6 +83,11 @@ export default function BookIndexPage() {
                 Kaldığın yerden devam et <span aria-hidden="true">→</span>
               </Link>
             ) : null}
+            <DeleteLibraryItem
+              itemId={book.id}
+              title={book.title}
+              onDeleted={() => router.replace("/library")}
+            />
           </div>
         </header>
         <section className="chapter-list" aria-labelledby="chapter-list-title">

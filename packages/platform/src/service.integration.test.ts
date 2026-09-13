@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "kysely";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   recordedFrenchAnalysis,
   type LanguageAnalyzer,
@@ -484,6 +487,144 @@ describe("first vertical slice", () => {
     await expect(
       service.getReader(owner.userId, itemId, first.section.id, "not-a-cursor"),
     ).rejects.toMatchObject({ code: "invalid_cursor", status: 400 });
+  });
+
+  it("deletes private content, rehomes shared vocabulary and purges upload bytes asynchronously", async () => {
+    const owner = await account("delete-owner@example.com");
+    const stranger = await account("delete-stranger@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    await service.putProfile(stranger.userId, "fr", "B1");
+    const first = await service.createPastedImport(
+      owner.userId,
+      "Camille mange une pomme française avec Élise au marché.",
+      "delete-first-import",
+      "delete-first-request",
+    );
+    const second = await service.createPastedImport(
+      owner.userId,
+      "Élise mange du pain français avec Camille dans le jardin.",
+      "delete-second-import",
+      "delete-second-request",
+    );
+    const firstId = String(first.body.libraryItem.id);
+    const secondId = String(second.body.libraryItem.id);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (
+        (await service.getLibraryItem(owner.userId, firstId)).processing
+          .overall === "ready" &&
+        (await service.getLibraryItem(owner.userId, secondId)).processing
+          .overall === "ready"
+      )
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const firstReader = await service.getReader(owner.userId, firstId);
+    const mange = firstReader.paragraphs
+      .flatMap((paragraph) => paragraph.occurrences)
+      .find((occurrence) => occurrence.surface === "mange")!;
+    await service.changeVocabularyState(
+      owner.userId,
+      mange.id,
+      "recognized",
+      "delete-vocabulary",
+      "delete-vocabulary-request",
+    );
+    await expect(
+      service.deleteLibraryItem(stranger.userId, firstId, "delete-stranger"),
+    ).rejects.toMatchObject({ status: 404 });
+    await service.deleteLibraryItem(owner.userId, firstId, "delete-first");
+    await expect(
+      service.getLibraryItem(owner.userId, firstId),
+    ).rejects.toMatchObject({ status: 404 });
+    expect((await service.listVocabulary(owner.userId)).items[0]).toMatchObject(
+      {
+        state: "recognized",
+        source: { libraryItemId: secondId },
+      },
+    );
+    await service.deleteLibraryItem(owner.userId, secondId, "delete-second");
+    expect((await service.listVocabulary(owner.userId)).items).toHaveLength(0);
+
+    const uploadRoot = await fs.mkdtemp(join(tmpdir(), "readify-delete-test-"));
+    const previousUploadRoot = process.env.READIFY_UPLOAD_DIR;
+    process.env.READIFY_UPLOAD_DIR = uploadRoot;
+    try {
+      const fileOwner = await account("delete-file@example.com");
+      await service.putProfile(fileOwner.userId, "fr", "B1");
+      const fileBytes = new TextEncoder().encode("%PDF-fixture-not-parsed");
+      const pending = await service.createPendingFileImport(
+        fileOwner.userId,
+        "pdf",
+        fileBytes,
+        "delete-file-import",
+        "delete-file-request",
+      );
+      const fileItemId = String(pending.body.libraryItem.id);
+      const asset = await sql<{
+        object_key: string;
+      }>`select a.object_key from source_assets a join library_items l on l.source_revision_id=a.source_revision_id where l.id=${fileItemId}`.execute(
+        database,
+      );
+      const objectKey = asset.rows[0]!.object_key;
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      await service.deleteLibraryItem(
+        fileOwner.userId,
+        fileItemId,
+        "delete-file",
+      );
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      const replacement = await service.createPendingFileImport(
+        fileOwner.userId,
+        "pdf",
+        fileBytes,
+        "delete-file-reimport",
+        "delete-file-reimport-request",
+      );
+      const replacementItemId = String(replacement.body.libraryItem.id);
+      await sql`update jobs set available_at='2100-01-01T00:00:00Z' where owner_id=${fileOwner.userId} and kind <> 'delete_source_asset'`.execute(
+        database,
+      );
+      expect(await service.claimAndRunOne()).toBe(true);
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      await service.deleteLibraryItem(
+        fileOwner.userId,
+        replacementItemId,
+        "delete-file-replacement",
+      );
+      await sql`update jobs set available_at='2020-01-01T00:00:00Z' where owner_id=${fileOwner.userId} and kind='delete_source_asset'`.execute(
+        database,
+      );
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const pendingPurges = await sql<{
+          count: string;
+        }>`select count(*)::text as count from jobs where owner_id=${fileOwner.userId} and kind='delete_source_asset' and status='queued'`.execute(
+          database,
+        );
+        if (pendingPurges.rows[0]?.count === "0") break;
+        await service.claimAndRunOne();
+      }
+      await expect(fs.stat(objectKey)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      const failedPurges = await sql<{
+        failed: string;
+        queued: string;
+      }>`select
+        count(*) filter (where status='failed')::text as failed,
+        count(*) filter (where status='queued')::text as queued
+        from jobs where owner_id=${fileOwner.userId} and kind='delete_source_asset'`.execute(
+        database,
+      );
+      expect(failedPurges.rows[0]).toMatchObject({ failed: "0", queued: "0" });
+      await expect(
+        service.getLibraryItem(fileOwner.userId, fileItemId),
+      ).rejects.toMatchObject({ status: 404 });
+    } finally {
+      if (previousUploadRoot === undefined)
+        delete process.env.READIFY_UPLOAD_DIR;
+      else process.env.READIFY_UPLOAD_DIR = previousUploadRoot;
+      await fs.rm(uploadRoot, { recursive: true, force: true });
+    }
   });
 
   it("persists reconstructed PDF hierarchy and precise provenance without retry duplication", async () => {

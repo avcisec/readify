@@ -1,6 +1,8 @@
 import { type NextRequest } from "next/server";
 import {
+  assertSameOrigin,
   currentIdentity,
+  noContent,
   ok,
   problem,
   requestId,
@@ -20,6 +22,26 @@ export async function GET(
       200,
       correlationId,
     );
+  } catch (error) {
+    return problem(error, correlationId);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ libraryItemId: string }> },
+) {
+  const correlationId = requestId(request);
+  try {
+    assertSameOrigin(request);
+    const identity = await currentIdentity();
+    const { libraryItemId } = await context.params;
+    await service.deleteLibraryItem(
+      identity.userId,
+      libraryItemId,
+      correlationId,
+    );
+    return noContent(correlationId);
   } catch (error) {
     return problem(error, correlationId);
   }

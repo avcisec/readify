@@ -10,6 +10,7 @@ import { vocabularyLearningStagesMigration } from "./migrations/003_vocabulary_l
 import { fileSourcesMigration } from "./migrations/004_file_sources";
 import { canonicalDocumentModelMigration } from "./migrations/005_canonical_document_model";
 import { pdfBookReconstructionMigration } from "./migrations/006_pdf_book_reconstruction";
+import { contentDeletionIndexesMigration } from "./migrations/007_content_deletion_indexes";
 
 const provider: MigrationProvider = {
   async getMigrations() {
@@ -20,6 +21,7 @@ const provider: MigrationProvider = {
       "004_file_sources": fileSourcesMigration,
       "005_canonical_document_model": canonicalDocumentModelMigration,
       "006_pdf_book_reconstruction": pdfBookReconstructionMigration,
+      "007_content_deletion_indexes": contentDeletionIndexesMigration,
     };
   },
 };

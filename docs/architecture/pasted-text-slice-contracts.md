@@ -197,6 +197,7 @@ Pasted text creates exactly one section. Text preparation preserves the normaliz
 4. **Reader position:** one Reader transaction authorizes the current revision/locator and replaces the account-item position. No learning event is emitted.
 5. **Section completion:** one Reader transaction records explicit completion and its versioned learning event. It never mutates Vocabulary.
 6. **Progress:** Learning/progress consumes Vocabulary/Reader events idempotently in separate transactions. Its summary is eventually consistent and reports its computation time.
+7. **Delete Library item:** one transaction authorizes and locks the item, cancels its pending jobs, rehomes vocabulary whose lemma still occurs in another owned book, removes source-owned state, queues source-byte cleanup, and queues progress reprojection. The route returns only after access is revoked; byte cleanup is idempotent and observable.
 
 With the accepted PostgreSQL queue, job/event insertion participates directly in the state transaction under [ADR-0004](../decisions/0004-atomic-durable-handoff.md). A future external queue requires an outbox before cutover, not a change to these application contracts.
 
@@ -216,6 +217,7 @@ This table maps HTTP delivery to owned application contracts. Exact framework ha
 | `POST /api/v1/imports/file`                                                    | Import process manager | `202 created`, `200 duplicate`, or safe file validation/extraction problem            |
 | `GET /api/v1/library-items`                                                    | Library composition    | bounded owned items with processing and resume summaries                              |
 | `GET /api/v1/library-items/{libraryItemId}`                                    | Library composition    | owned item/status/capabilities                                                        |
+| `DELETE /api/v1/library-items/{libraryItemId}`                                 | Library/Import         | revoke/delete owned item and queue private source-byte cleanup                        |
 | `GET /api/v1/library-items/{libraryItemId}/book-index`                         | Library composition    | owned book summary and ordered chapter/section list                                   |
 | `POST /api/v1/library-items/{libraryItemId}/processing-retries`                | Import                 | accepted retry for one advertised capability                                          |
 | `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...&cursor=...`    | Reader composition     | cursor-paged selected section, confirmed states, and semantic saved position           |

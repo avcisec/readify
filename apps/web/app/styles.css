@@ -961,6 +961,51 @@ button.reader-token:hover:not(:disabled) {
   display: block;
   margin: 1.5rem auto;
 }
+
+.danger-link {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  padding: 0.45rem 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.danger-link:hover,
+.danger-link:focus-visible {
+  color: #701f1f;
+}
+
+.confirm-dialog {
+  width: min(30rem, calc(100% - 2rem));
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1.5rem 4rem rgb(0 30 30 / 22%);
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(0 30 30 / 45%);
+}
+
+.confirm-dialog h2 {
+  margin-top: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.danger-button {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: white;
+}
 .reader-footer > div {
   display: grid;
 }

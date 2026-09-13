@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppNav } from "../../components/app-nav";
+import { DeleteLibraryItem } from "../../components/delete-library-item";
 import { ApiProblem, api, idempotencyKey, turkishProblem } from "../../lib/api";
 
 type Item = {
@@ -156,6 +157,11 @@ export default function LibraryPage() {
                           Okuyucu hazırlanıyor…
                         </span>
                       )}
+                      <DeleteLibraryItem
+                        itemId={item.id}
+                        title={item.title}
+                        onDeleted={() => void load()}
+                      />
                     </div>
                     {item.processing.overall === "ready_degraded" ? (
                       <p className="card-note">

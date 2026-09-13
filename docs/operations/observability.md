@@ -8,6 +8,7 @@ Observability is part of each feature's acceptance, not a later dashboard projec
 - Centralized application error reporting with release/environment, safe context, grouping, ownership, and alert routing.
 - Metrics for request latency/error/saturation, database availability/connections/query latency, queue depth/oldest age/retries/dead letters, and worker heartbeat/utilization.
 - Import metrics by source/stage: duration, success/failure reason, retry, partial readiness, failed import/alignment counts.
+- Source deletion backlog and failed local/object-storage purges, without logging private object keys.
 - AI/media metrics by provider/model/config: latency, timeout/error, input/output usage, estimated cost, GPU seconds, audio minutes/pages/characters, quality/fallback result, and cache hit.
 - Trace/correlation propagation from browser request through API, durable handoff, job attempts, provider calls, and artifact writes.
 
