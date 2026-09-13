@@ -218,7 +218,7 @@ This table maps HTTP delivery to owned application contracts. Exact framework ha
 | `GET /api/v1/library-items/{libraryItemId}`                                    | Library composition    | owned item/status/capabilities                                                        |
 | `GET /api/v1/library-items/{libraryItemId}/book-index`                         | Library composition    | owned book summary and ordered chapter/section list                                   |
 | `POST /api/v1/library-items/{libraryItemId}/processing-retries`                | Import                 | accepted retry for one advertised capability                                          |
-| `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...`               | Reader composition     | bounded content window for the selected section, confirmed states, saved position     |
+| `GET /api/v1/library-items/{libraryItemId}/reader?sectionId=...&cursor=...`    | Reader composition     | cursor-paged selected section, confirmed states, and semantic saved position           |
 | `PUT /api/v1/library-items/{libraryItemId}/reader-position`                    | Reader                 | authoritative confirmed semantic position                                             |
 | `PUT /api/v1/library-items/{libraryItemId}/sections/{sectionId}/completion`    | Reader                 | authoritative explicit completion                                                     |
 | `GET /api/v1/library-items/{libraryItemId}/occurrences/{occurrenceId}/context` | Reader composition     | deterministic token/state/context plus independently degradable meaning               |

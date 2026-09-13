@@ -413,6 +413,79 @@ describe("first vertical slice", () => {
     ).toBe("0");
   });
 
+  it("pages long Reader sections without truncating content and resumes around a semantic anchor", async () => {
+    const owner = await account("reader-pagination@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    const text = Array.from(
+      { length: 125 },
+      (_, index) =>
+        `Bonjour paragraphe ${index + 1}. Camille lit un livre français avec Élise.`,
+    ).join("\n\n");
+    const created = await service.createPastedImport(
+      owner.userId,
+      text,
+      "reader-pagination-import",
+      "reader-pagination-request",
+    );
+    const itemId = String(
+      (created.body as { libraryItem: { id: string } }).libraryItem.id,
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if ((await service.getLibraryItem(owner.userId, itemId)).readerAvailable)
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+
+    const first = await service.getReader(owner.userId, itemId);
+    expect(first.paragraphs).toHaveLength(50);
+    expect(first.paragraphs[0]?.ordinal).toBe(0);
+    expect(first.previousCursor).toBeNull();
+    expect(first.nextCursor).not.toBeNull();
+    const second = await service.getReader(
+      owner.userId,
+      itemId,
+      first.section.id,
+      first.nextCursor!,
+    );
+    const third = await service.getReader(
+      owner.userId,
+      itemId,
+      first.section.id,
+      second.nextCursor!,
+    );
+    expect(second.paragraphs).toHaveLength(50);
+    expect(second.paragraphs[0]?.ordinal).toBe(50);
+    expect(third.paragraphs).toHaveLength(25);
+    expect(third.paragraphs.at(-1)?.ordinal).toBe(124);
+    expect(third.nextCursor).toBeNull();
+    expect(
+      new Set(
+        [...first.paragraphs, ...second.paragraphs, ...third.paragraphs].map(
+          (paragraph) => paragraph.id,
+        ),
+      ).size,
+    ).toBe(125);
+
+    const anchor = second.paragraphs.find(
+      (paragraph) => paragraph.ordinal === 75,
+    )!;
+    await service.saveReaderPosition(owner.userId, itemId, {
+      sourceRevisionId: first.sourceRevisionId,
+      sectionId: first.section.id,
+      paragraphId: anchor.id,
+    });
+    const resumed = await service.getReader(owner.userId, itemId);
+    expect(
+      resumed.paragraphs.some((paragraph) => paragraph.id === anchor.id),
+    ).toBe(true);
+    expect(resumed.paragraphs[0]?.ordinal).toBe(65);
+    expect(resumed.previousCursor).not.toBeNull();
+    expect(resumed.nextCursor).not.toBeNull();
+    await expect(
+      service.getReader(owner.userId, itemId, first.section.id, "not-a-cursor"),
+    ).rejects.toMatchObject({ code: "invalid_cursor", status: 400 });
+  });
+
   it("persists reconstructed PDF hierarchy and precise provenance without retry duplication", async () => {
     const owner = await account("pdf-provenance@example.com");
     await service.putProfile(owner.userId, "fr", "B1");

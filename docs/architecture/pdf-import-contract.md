@@ -37,3 +37,5 @@ Uploads remain capped at 200 MB and reconstructed text at 1,000,000 Unicode scal
 `source_revisions.import_quality_report` records page classes, OCR/failed pages, excluded boilerplate counts, chapter confidence and stable warning codes. `source_pages` holds page-level warnings and full extraction evidence. Logs contain correlation/stage/outcome only—never document text.
 
 Known limitations: no manual chapter editor, nested Reader hierarchy, table/figure semantics, mathematical layout recovery, vertical writing specialization, or reprocessing UI. Cross-revision semantic remapping is deferred until reprocessing exists; current identities are stable within an immutable source revision.
+
+Reader delivery pages long chapters in bounded paragraph windows. The first request opens around an existing semantic resume anchor; opaque previous/next cursors let the client extend the chapter without silently truncating it.

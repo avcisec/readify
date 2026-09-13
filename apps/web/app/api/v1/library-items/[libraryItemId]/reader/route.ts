@@ -17,8 +17,14 @@ export async function GET(
     const { libraryItemId } = await context.params;
     const sectionId =
       request.nextUrl.searchParams.get("sectionId") ?? undefined;
+    const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
     return ok(
-      await service.getReader(identity.userId, libraryItemId, sectionId),
+      await service.getReader(
+        identity.userId,
+        libraryItemId,
+        sectionId,
+        cursor,
+      ),
       200,
       correlationId,
     );

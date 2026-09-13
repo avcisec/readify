@@ -956,6 +956,11 @@ button.reader-token:hover:not(:disabled) {
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
 }
+
+.reader-page-control {
+  display: block;
+  margin: 1.5rem auto;
+}
 .reader-footer > div {
   display: grid;
 }

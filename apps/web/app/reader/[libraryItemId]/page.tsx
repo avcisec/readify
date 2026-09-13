@@ -37,6 +37,8 @@ type Reader = {
   paragraphs: Paragraph[];
   savedPosition: null | { anchor: { paragraphId: string } };
   processing: { capabilities: { wordTools: string } };
+  previousCursor: string | null;
+  nextCursor: string | null;
 };
 type Context = {
   occurrence: {
@@ -95,6 +97,7 @@ export default function ReaderPage() {
   const [message, setMessage] = useState<string>();
   const [lastChange, setLastChange] = useState<string>();
   const [stateBusy, setStateBusy] = useState(false);
+  const [pageBusy, setPageBusy] = useState(false);
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const activeToken = useRef<HTMLButtonElement | null>(null);
   const trackingReady = useRef(false);
@@ -102,13 +105,20 @@ export default function ReaderPage() {
   const pendingPosition = useRef<PositionAnchor | undefined>(undefined);
   const positionSave = useRef<Promise<void> | null>(null);
   const positionTimer = useRef<number | undefined>(undefined);
+  const restoredReader = useRef<string | undefined>(undefined);
+  const readerUrl = useCallback(
+    (cursor?: string) => {
+      const params = new URLSearchParams();
+      if (sectionId) params.set("sectionId", sectionId);
+      if (cursor) params.set("cursor", cursor);
+      const query = params.toString();
+      return `/api/v1/library-items/${libraryItemId}/reader${query ? `?${query}` : ""}`;
+    },
+    [libraryItemId, sectionId],
+  );
   const load = useCallback(async () => {
     try {
-      setReader(
-        await api<Reader>(
-          `/api/v1/library-items/${libraryItemId}/reader${sectionId ? `?sectionId=${encodeURIComponent(sectionId)}` : ""}`,
-        ),
-      );
+      setReader(await api<Reader>(readerUrl()));
     } catch (error) {
       if (error instanceof ApiProblem && error.status === 401)
         router.replace("/sign-in");
@@ -119,10 +129,49 @@ export default function ReaderPage() {
           ),
         );
     }
-  }, [libraryItemId, router, sectionId]);
+  }, [readerUrl, router]);
   useEffect(() => {
     void load();
   }, [load]);
+  const loadReaderPage = useCallback(
+    async (cursor: string, direction: "previous" | "next") => {
+      if (pageBusy) return;
+      setPageBusy(true);
+      try {
+        const page = await api<Reader>(readerUrl(cursor));
+        setReader((current) => {
+          if (!current || current.section.id !== page.section.id) return page;
+          const byId = new Map(
+            [...current.paragraphs, ...page.paragraphs].map((paragraph) => [
+              paragraph.id,
+              paragraph,
+            ]),
+          );
+          return {
+            ...current,
+            paragraphs: [...byId.values()].sort(
+              (left, right) => left.ordinal - right.ordinal,
+            ),
+            previousCursor:
+              direction === "previous"
+                ? page.previousCursor
+                : current.previousCursor,
+            nextCursor:
+              direction === "next" ? page.nextCursor : current.nextCursor,
+          };
+        });
+      } catch (error) {
+        setMessage(
+          turkishProblem(
+            error instanceof Error ? error.message : "request_failed",
+          ),
+        );
+      } finally {
+        setPageBusy(false);
+      }
+    },
+    [pageBusy, readerUrl],
+  );
   const flushPosition = useCallback(
     async (keepalive = false) => {
       if (!reader || positionSave.current || !pendingPosition.current) return;
@@ -171,6 +220,12 @@ export default function ReaderPage() {
   );
   useEffect(() => {
     if (!reader) return;
+    const readerKey = `${reader.sourceRevisionId}:${reader.section.id}`;
+    if (restoredReader.current === readerKey) {
+      trackingReady.current = true;
+      return;
+    }
+    restoredReader.current = readerKey;
     trackingReady.current = false;
     const hashTarget = window.location.hash.startsWith("#occurrence-")
       ? document.getElementById(window.location.hash.slice(1))
@@ -434,6 +489,17 @@ export default function ReaderPage() {
               Metin okunabilir; kelime araçları şu an kullanılamıyor.
             </p>
           ) : null}
+          {reader.previousCursor ? (
+            <button
+              className="reader-page-control secondary"
+              disabled={pageBusy}
+              onClick={() =>
+                void loadReaderPage(reader.previousCursor!, "previous")
+              }
+            >
+              {pageBusy ? "Yükleniyor…" : "Önceki kısmı yükle"}
+            </button>
+          ) : null}
           {reader.paragraphs.map((paragraph) => (
             <ReaderParagraph
               key={paragraph.id}
@@ -443,22 +509,32 @@ export default function ReaderPage() {
               initialTabStop={paragraph === reader.paragraphs[0]}
             />
           ))}
-          <footer className="reader-footer">
-            <div>
-              <span className="eyebrow">Okuma durumu</span>
-              <strong>
-                {reader.section.completed
-                  ? "Bölüm tamamlandı"
-                  : "Okumaya devam ediyorsun"}
-              </strong>
-            </div>
+          {reader.nextCursor ? (
             <button
-              onClick={() => void complete()}
-              disabled={reader.section.completed}
+              className="reader-page-control secondary"
+              disabled={pageBusy}
+              onClick={() => void loadReaderPage(reader.nextCursor!, "next")}
             >
-              {reader.section.completed ? "Tamamlandı" : "Bölümü tamamla"}
+              {pageBusy ? "Yükleniyor…" : "Okumaya devam et"}
             </button>
-          </footer>
+          ) : (
+            <footer className="reader-footer">
+              <div>
+                <span className="eyebrow">Okuma durumu</span>
+                <strong>
+                  {reader.section.completed
+                    ? "Bölüm tamamlandı"
+                    : "Okumaya devam ediyorsun"}
+                </strong>
+              </div>
+              <button
+                onClick={() => void complete()}
+                disabled={reader.section.completed}
+              >
+                {reader.section.completed ? "Tamamlandı" : "Bölümü tamamla"}
+              </button>
+            </footer>
+          )}
         </article>
         {context ? (
           <aside className="context-panel" aria-label="Kelime bağlamı">

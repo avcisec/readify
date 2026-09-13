@@ -74,6 +74,7 @@ const NON_RETRYABLE_JOB_ERRORS = new Set([
   "pdf_password_required",
   "pdf_extractor_response_too_large",
 ]);
+const READER_PAGE_SIZE = 50;
 
 function classifyJobError(error: unknown): string {
   if (error instanceof Error && SAFE_JOB_ERROR_CODES.has(error.message))
@@ -123,6 +124,31 @@ export class ReadifyService implements SliceApplication {
 
   private timestamp(): string {
     return this.now().toISOString();
+  }
+
+  private encodeReaderCursor(startOrdinal: number): string {
+    return Buffer.from(JSON.stringify({ version: 1, startOrdinal })).toString(
+      "base64url",
+    );
+  }
+
+  private decodeReaderCursor(cursor: string): number {
+    if (!cursor || cursor.length > 200)
+      throw new AppError("invalid_cursor", 400);
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      ) as { version?: unknown; startOrdinal?: unknown };
+      if (
+        decoded.version !== 1 ||
+        !Number.isSafeInteger(decoded.startOrdinal) ||
+        Number(decoded.startOrdinal) < 0
+      )
+        throw new Error("invalid cursor payload");
+      return Number(decoded.startOrdinal);
+    } catch {
+      throw new AppError("invalid_cursor", 400);
+    }
   }
 
   async requestEmailProof(
@@ -1325,6 +1351,7 @@ export class ReadifyService implements SliceApplication {
     userId: string,
     itemId: string,
     sectionId?: string,
+    cursor?: string,
   ): Promise<ReaderView> {
     const itemResult = await sql<Record<string, unknown>>`
       select l.id as library_item_id, l.title, l.source_revision_id, w.overall, w.stage, w.text_capability,
@@ -1345,14 +1372,37 @@ export class ReadifyService implements SliceApplication {
       ? sections.rows.find((candidate) => candidate.id === sectionId)
       : sections.rows[0];
     if (!section) throw new AppError("reader_not_ready", 409);
-    const paragraphs = await sql<{
+    const position = await sql<{
+      source_revision_id: string;
+      section_id: string;
+      paragraph_id: string;
+      sentence_id: string | null;
+      paragraph_ordinal: number;
+      version: number;
+    }>`select rp.source_revision_id, rp.section_id, rp.paragraph_id, rp.sentence_id, p.ordinal as paragraph_ordinal, rp.version
+      from reader_positions rp join paragraphs p on p.id=rp.paragraph_id
+      where rp.owner_id=${userId} and rp.library_item_id=${itemId} and rp.section_id=${section.id}`.execute(
+      this.database,
+    );
+    const startOrdinal = cursor
+      ? this.decodeReaderCursor(cursor)
+      : Math.max(
+          0,
+          Number(position.rows[0]?.paragraph_ordinal ?? 0) -
+            Math.floor(READER_PAGE_SIZE / 5),
+        );
+    const paragraphResult = await sql<{
       id: string;
       ordinal: number;
       text: string;
-    }>`select id, ordinal, text from paragraphs where section_id=${section.id} order by ordinal limit 50`.execute(
+    }>`select id, ordinal, text from paragraphs where section_id=${section.id} and ordinal >= ${startOrdinal} order by ordinal limit ${READER_PAGE_SIZE + 1}`.execute(
       this.database,
     );
-    const paragraphIds = paragraphs.rows.map((row) => row.id);
+    if (cursor && !paragraphResult.rows.length)
+      throw new AppError("invalid_cursor", 400);
+    const hasNextPage = paragraphResult.rows.length > READER_PAGE_SIZE;
+    const paragraphs = paragraphResult.rows.slice(0, READER_PAGE_SIZE);
+    const paragraphIds = paragraphs.map((row) => row.id);
     const sentenceRows = paragraphIds.length
       ? await sql<{
           id: string;
@@ -1381,15 +1431,6 @@ export class ReadifyService implements SliceApplication {
           where o.paragraph_id = any(${paragraphIds}) order by o.paragraph_id, o.ordinal
         `.execute(this.database)
       : { rows: [] };
-    const position = await sql<{
-      source_revision_id: string;
-      section_id: string;
-      paragraph_id: string;
-      sentence_id: string | null;
-      version: number;
-    }>`select source_revision_id, section_id, paragraph_id, sentence_id, version from reader_positions where owner_id=${userId} and library_item_id=${itemId} and section_id=${section.id}`.execute(
-      this.database,
-    );
     const completion = await sql<{
       completed_at: Date;
     }>`select completed_at from section_completions where owner_id=${userId} and section_id=${section.id}`.execute(
@@ -1407,7 +1448,7 @@ export class ReadifyService implements SliceApplication {
         ordinal: section.ordinal,
         completed: Boolean(completion.rows[0]),
       },
-      paragraphs: paragraphs.rows.map((paragraph) => ({
+      paragraphs: paragraphs.map((paragraph) => ({
         ...paragraph,
         sentences: sentenceRows.rows
           .filter((sentence) => sentence.paragraph_id === paragraph.id)
@@ -1441,7 +1482,15 @@ export class ReadifyService implements SliceApplication {
             version: position.rows[0].version,
           }
         : null,
-      nextCursor: null,
+      previousCursor:
+        startOrdinal > 0
+          ? this.encodeReaderCursor(
+              Math.max(0, startOrdinal - READER_PAGE_SIZE),
+            )
+          : null,
+      nextCursor: hasNextPage
+        ? this.encodeReaderCursor(paragraphs.at(-1)!.ordinal + 1)
+        : null,
     };
   }
 

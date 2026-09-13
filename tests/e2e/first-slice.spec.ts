@@ -393,6 +393,32 @@ test("responsive Reader stays within the viewport and adapts context", async ({
   ).toBeFocused();
 });
 
+test("Reader exposes every paragraph in a long chapter through bounded pages", async ({
+  page,
+}) => {
+  await completeOnboarding(page, emailForAttempt("reader-pages"));
+  await page.getByRole("link", { name: /İçe aktar/u }).click();
+  const paragraphs = Array.from(
+    { length: 55 },
+    (_, index) =>
+      `Bonjour paragraphe ${index + 1}. Camille lit un livre français avec Élise.`,
+  ).join("\n\n");
+  await page.getByLabel("Fransızca metin").fill(paragraphs);
+  await page.getByRole("button", { name: "İçe aktar" }).click();
+  await page.getByRole("link", { name: "Kitabı aç" }).click();
+  await page.getByRole("link", { name: /Bölüm 1 bölümünü oku/u }).click();
+
+  await expect(page.locator(".reader-paragraph")).toHaveCount(50);
+  await expect(
+    page.getByRole("button", { name: "Bölümü tamamla" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Okumaya devam et" }).click();
+  await expect(page.locator(".reader-paragraph")).toHaveCount(55);
+  await expect(
+    page.getByRole("button", { name: "Bölümü tamamla" }),
+  ).toBeVisible();
+});
+
 test("tablet and mobile widths use labeled bottom navigation", async ({
   page,
 }) => {

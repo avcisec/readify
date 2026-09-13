@@ -75,7 +75,8 @@ export type ReaderView = {
     resolution: "exact";
     version: number;
   };
-  nextCursor: null;
+  previousCursor: string | null;
+  nextCursor: string | null;
 };
 export type VocabularyMutationView = {
   vocabularyItem: null | {
@@ -177,6 +178,7 @@ export interface ReaderApplication {
     userId: string,
     itemId: string,
     sectionId?: string,
+    cursor?: string,
   ): Promise<ReaderView>;
   saveReaderPosition(
     userId: string,
