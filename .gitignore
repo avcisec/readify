@@ -12,6 +12,7 @@ coverage/
 .cache/
 .pytest_cache/
 __pycache__/
+.venv/
 *.py[cod]
 *.tsbuildinfo
 playwright-report/
@@ -24,8 +25,13 @@ test-results/
 
 # Runtime data and generated media
 data/
+.data/
 tmp/
 *.log
 
 # Local competitor runtime/source snapshot; research reports remain tracked.
 /linguacafe/
+
+# Private/local extraction quality corpus; only its operating guide is tracked.
+/extraction-benchmark-datasets/*
+!/extraction-benchmark-datasets/README.md

@@ -33,4 +33,6 @@ pnpm --filter @readify/platform migrate
 mapped_states="$(docker compose exec -T postgres-test psql -U readify -d readify_test -Atc "select v.state::text || '|' || c.next_state::text from vocabulary_items v join vocabulary_changes c on c.vocabulary_item_id=v.id where v.id='migration_vocabulary'")"
 test "$mapped_states" = "new|new"
 pnpm --filter @readify/platform migrate
+deletion_indexes="$(docker compose exec -T postgres-test psql -U readify -d readify_test -Atc "select count(*) from pg_indexes where schemaname='public' and indexname in ('occurrences_sentence_id_idx','reader_positions_library_item_id_idx','reader_positions_source_revision_id_idx','reader_positions_section_id_idx','reader_positions_paragraph_id_idx','reader_positions_sentence_id_idx','section_completions_section_id_idx','vocabulary_items_first_occurrence_id_idx','vocabulary_occurrences_occurrence_id_idx')")"
+test "$deletion_indexes" = "9"
 echo "migration clean apply, legacy vocabulary mapping, representative upgrade, and idempotent re-run: PASS"

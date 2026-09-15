@@ -1,6 +1,6 @@
 # First vertical slice implementation
 
-- Status: Implementation and automated evidence complete; manual AT, independent review, and restricted preview acceptance pending
+- Status: Implementation, automated evidence, and prior human UI acceptance complete; manual AT, independent review, and restricted preview acceptance pending
 - Date: 2026-09-01
 - Product spec: [Pasted-text Reader learning loop](../../product-specs/pasted-text-reader-learning-loop.md)
 - Architecture contract: [Pasted-text slice contracts](../../architecture/pasted-text-slice-contracts.md)

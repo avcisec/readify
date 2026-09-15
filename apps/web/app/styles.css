@@ -344,6 +344,33 @@ textarea {
   margin-bottom: 0;
   color: var(--muted);
 }
+.import-source-picker {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+.source-option {
+  min-width: 4.5rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  color: var(--muted);
+  background: var(--surface-subtle);
+  font-size: 0.78rem;
+  font-weight: 760;
+  letter-spacing: 0.05em;
+}
+.source-option.selected,
+.source-option:focus-visible {
+  border-color: var(--brand);
+  color: var(--surface);
+  background: var(--brand);
+}
+.form-help {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.87rem;
+}
 .feature-icon {
   width: 2.9rem;
   height: 2.9rem;
@@ -928,6 +955,56 @@ button.reader-token:hover:not(:disabled) {
   margin-top: 3.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
+}
+
+.reader-page-control {
+  display: block;
+  margin: 1.5rem auto;
+}
+
+.danger-link {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  padding: 0.45rem 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.danger-link:hover,
+.danger-link:focus-visible {
+  color: #701f1f;
+}
+
+.confirm-dialog {
+  width: min(30rem, calc(100% - 2rem));
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1.5rem 4rem rgb(0 30 30 / 22%);
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(0 30 30 / 45%);
+}
+
+.confirm-dialog h2 {
+  margin-top: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.danger-button {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: white;
 }
 .reader-footer > div {
   display: grid;

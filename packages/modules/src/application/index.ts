@@ -9,7 +9,7 @@ export type LearningProfile = {
 export type LibraryItemView = {
   id: string;
   title: string;
-  sourceType: "pasted_text";
+  sourceType: "pasted_text" | "pdf" | "epub";
   readerAvailable: boolean;
   hasSavedPosition: boolean;
   processing: ProcessingStatus;
@@ -75,7 +75,8 @@ export type ReaderView = {
     resolution: "exact";
     version: number;
   };
-  nextCursor: null;
+  previousCursor: string | null;
+  nextCursor: string | null;
 };
 export type VocabularyMutationView = {
   vocabularyItem: null | {
@@ -155,6 +156,13 @@ export interface ImportApplication {
     idempotencyKey: string,
     correlationId: string,
   ): Promise<ImportCommandResult>;
+  createPendingFileImport(
+    userId: string,
+    sourceType: "pdf" | "epub",
+    bytes: Uint8Array,
+    idempotencyKey: string,
+    correlationId: string,
+  ): Promise<ImportCommandResult>;
   retryCapability(
     userId: string,
     itemId: string,
@@ -170,6 +178,11 @@ export interface LibraryApplication {
   ): Promise<{ items: LibraryItemView[]; nextCursor: null }>;
   getLibraryItem(userId: string, itemId: string): Promise<LibraryItemView>;
   getBookIndex(userId: string, itemId: string): Promise<BookIndexView>;
+  deleteLibraryItem(
+    userId: string,
+    itemId: string,
+    correlationId: string,
+  ): Promise<void>;
 }
 
 export interface ReaderApplication {
@@ -177,6 +190,7 @@ export interface ReaderApplication {
     userId: string,
     itemId: string,
     sectionId?: string,
+    cursor?: string,
   ): Promise<ReaderView>;
   saveReaderPosition(
     userId: string,

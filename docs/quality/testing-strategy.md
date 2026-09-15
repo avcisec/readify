@@ -15,6 +15,8 @@ Tests protect behavior and contracts, not private implementation details. The te
 
 Browser and assistive-technology acceptance is bounded by the [accessibility matrix](accessibility.md); automated engine coverage does not replace its keyboard/screen-reader release evidence.
 
+The Verify workflow installs the pinned CPU PDF runtime and runs `make pdf-runtime-smoke`. That smoke creates one native-text page and one image-only page, then proves the real worker subprocess keeps the native page on PyMuPDF extraction and invokes Tesseract only for the scanned page. Pure reconstruction fixtures remain in the normal unit suite; private book-corpus quality acceptance remains a separate release gate.
+
 ## Critical acceptance coverage
 
 As features arrive, acceptance tests must cover importing content, observing processing/retry, opening the reader, marking/undoing vocabulary, switching views without position loss, resuming reading, processing audio, falling back from word to sentence sync, reviewing/restoring learning state, and rebuilding honest progress.

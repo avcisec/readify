@@ -1,10 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "kysely";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   recordedFrenchAnalysis,
   type LanguageAnalyzer,
 } from "@readify/modules";
 import { createDatabase } from "./database/client";
+import { reconstructPdf } from "./pdf-reconstruction";
 import { ReadifyService } from "./service";
 
 const database = createDatabase();
@@ -410,6 +414,399 @@ describe("first vertical slice", () => {
         )
       ).rows[0]?.count,
     ).toBe("0");
+  });
+
+  it("pages long Reader sections without truncating content and resumes around a semantic anchor", async () => {
+    const owner = await account("reader-pagination@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    const text = Array.from(
+      { length: 125 },
+      (_, index) =>
+        `Bonjour paragraphe ${index + 1}. Camille lit un livre français avec Élise.`,
+    ).join("\n\n");
+    const created = await service.createPastedImport(
+      owner.userId,
+      text,
+      "reader-pagination-import",
+      "reader-pagination-request",
+    );
+    const itemId = String(
+      (created.body as { libraryItem: { id: string } }).libraryItem.id,
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if ((await service.getLibraryItem(owner.userId, itemId)).readerAvailable)
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+
+    const first = await service.getReader(owner.userId, itemId);
+    expect(first.paragraphs).toHaveLength(50);
+    expect(first.paragraphs[0]?.ordinal).toBe(0);
+    expect(first.previousCursor).toBeNull();
+    expect(first.nextCursor).not.toBeNull();
+    const second = await service.getReader(
+      owner.userId,
+      itemId,
+      first.section.id,
+      first.nextCursor!,
+    );
+    const third = await service.getReader(
+      owner.userId,
+      itemId,
+      first.section.id,
+      second.nextCursor!,
+    );
+    expect(second.paragraphs).toHaveLength(50);
+    expect(second.paragraphs[0]?.ordinal).toBe(50);
+    expect(third.paragraphs).toHaveLength(25);
+    expect(third.paragraphs.at(-1)?.ordinal).toBe(124);
+    expect(third.nextCursor).toBeNull();
+    expect(
+      new Set(
+        [...first.paragraphs, ...second.paragraphs, ...third.paragraphs].map(
+          (paragraph) => paragraph.id,
+        ),
+      ).size,
+    ).toBe(125);
+
+    const anchor = second.paragraphs.find(
+      (paragraph) => paragraph.ordinal === 75,
+    )!;
+    await service.saveReaderPosition(owner.userId, itemId, {
+      sourceRevisionId: first.sourceRevisionId,
+      sectionId: first.section.id,
+      paragraphId: anchor.id,
+    });
+    const resumed = await service.getReader(owner.userId, itemId);
+    expect(
+      resumed.paragraphs.some((paragraph) => paragraph.id === anchor.id),
+    ).toBe(true);
+    expect(resumed.paragraphs[0]?.ordinal).toBe(65);
+    expect(resumed.previousCursor).not.toBeNull();
+    expect(resumed.nextCursor).not.toBeNull();
+    await expect(
+      service.getReader(owner.userId, itemId, first.section.id, "not-a-cursor"),
+    ).rejects.toMatchObject({ code: "invalid_cursor", status: 400 });
+  });
+
+  it("deletes private content, rehomes shared vocabulary and purges upload bytes asynchronously", async () => {
+    const owner = await account("delete-owner@example.com");
+    const stranger = await account("delete-stranger@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    await service.putProfile(stranger.userId, "fr", "B1");
+    const first = await service.createPastedImport(
+      owner.userId,
+      "Camille mange une pomme française avec Élise au marché.",
+      "delete-first-import",
+      "delete-first-request",
+    );
+    const second = await service.createPastedImport(
+      owner.userId,
+      "Élise mange du pain français avec Camille dans le jardin.",
+      "delete-second-import",
+      "delete-second-request",
+    );
+    const firstId = String(first.body.libraryItem.id);
+    const secondId = String(second.body.libraryItem.id);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (
+        (await service.getLibraryItem(owner.userId, firstId)).processing
+          .overall === "ready" &&
+        (await service.getLibraryItem(owner.userId, secondId)).processing
+          .overall === "ready"
+      )
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const firstReader = await service.getReader(owner.userId, firstId);
+    const mange = firstReader.paragraphs
+      .flatMap((paragraph) => paragraph.occurrences)
+      .find((occurrence) => occurrence.surface === "mange")!;
+    await service.saveReaderPosition(owner.userId, firstId, {
+      sourceRevisionId: firstReader.sourceRevisionId,
+      sectionId: firstReader.section.id,
+      paragraphId: firstReader.paragraphs[0]!.id,
+    });
+    await service.changeVocabularyState(
+      owner.userId,
+      mange.id,
+      "recognized",
+      "delete-vocabulary",
+      "delete-vocabulary-request",
+    );
+    await expect(
+      service.deleteLibraryItem(stranger.userId, firstId, "delete-stranger"),
+    ).rejects.toMatchObject({ status: 404 });
+    await service.deleteLibraryItem(owner.userId, firstId, "delete-first");
+    await expect(
+      service.getLibraryItem(owner.userId, firstId),
+    ).rejects.toMatchObject({ status: 404 });
+    expect((await service.listVocabulary(owner.userId)).items[0]).toMatchObject(
+      {
+        state: "recognized",
+        source: { libraryItemId: secondId },
+      },
+    );
+    await service.deleteLibraryItem(owner.userId, secondId, "delete-second");
+    expect((await service.listVocabulary(owner.userId)).items).toHaveLength(0);
+
+    const uploadRoot = await fs.mkdtemp(join(tmpdir(), "readify-delete-test-"));
+    const previousUploadRoot = process.env.READIFY_UPLOAD_DIR;
+    process.env.READIFY_UPLOAD_DIR = uploadRoot;
+    try {
+      const fileOwner = await account("delete-file@example.com");
+      await service.putProfile(fileOwner.userId, "fr", "B1");
+      const fileBytes = new TextEncoder().encode("%PDF-fixture-not-parsed");
+      const pending = await service.createPendingFileImport(
+        fileOwner.userId,
+        "pdf",
+        fileBytes,
+        "delete-file-import",
+        "delete-file-request",
+      );
+      const fileItemId = String(pending.body.libraryItem.id);
+      const asset = await sql<{
+        object_key: string;
+      }>`select a.object_key from source_assets a join library_items l on l.source_revision_id=a.source_revision_id where l.id=${fileItemId}`.execute(
+        database,
+      );
+      const objectKey = asset.rows[0]!.object_key;
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      await service.deleteLibraryItem(
+        fileOwner.userId,
+        fileItemId,
+        "delete-file",
+      );
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      const replacement = await service.createPendingFileImport(
+        fileOwner.userId,
+        "pdf",
+        fileBytes,
+        "delete-file-reimport",
+        "delete-file-reimport-request",
+      );
+      const replacementItemId = String(replacement.body.libraryItem.id);
+      await sql`update jobs set available_at='2100-01-01T00:00:00Z' where owner_id=${fileOwner.userId} and kind <> 'delete_source_asset'`.execute(
+        database,
+      );
+      expect(await service.claimAndRunOne()).toBe(true);
+      await expect(fs.stat(objectKey)).resolves.toBeDefined();
+      await service.deleteLibraryItem(
+        fileOwner.userId,
+        replacementItemId,
+        "delete-file-replacement",
+      );
+      await sql`update jobs set available_at='2020-01-01T00:00:00Z' where owner_id=${fileOwner.userId} and kind='delete_source_asset'`.execute(
+        database,
+      );
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const pendingPurges = await sql<{
+          count: string;
+        }>`select count(*)::text as count from jobs where owner_id=${fileOwner.userId} and kind='delete_source_asset' and status='queued'`.execute(
+          database,
+        );
+        if (pendingPurges.rows[0]?.count === "0") break;
+        await service.claimAndRunOne();
+      }
+      await expect(fs.stat(objectKey)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      const failedPurges = await sql<{
+        failed: string;
+        queued: string;
+      }>`select
+        count(*) filter (where status='failed')::text as failed,
+        count(*) filter (where status='queued')::text as queued
+        from jobs where owner_id=${fileOwner.userId} and kind='delete_source_asset'`.execute(
+        database,
+      );
+      expect(failedPurges.rows[0]).toMatchObject({ failed: "0", queued: "0" });
+      await expect(
+        service.getLibraryItem(fileOwner.userId, fileItemId),
+      ).rejects.toMatchObject({ status: 404 });
+    } finally {
+      if (previousUploadRoot === undefined)
+        delete process.env.READIFY_UPLOAD_DIR;
+      else process.env.READIFY_UPLOAD_DIR = previousUploadRoot;
+      await fs.rm(uploadRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("persists reconstructed PDF hierarchy and precise provenance without retry duplication", async () => {
+    const owner = await account("pdf-provenance@example.com");
+    await service.putProfile(owner.userId, "fr", "B1");
+    const pages = [
+      {
+        number: 1,
+        width: 600,
+        height: 800,
+        rawText: "Première histoire\n\nÉlise ouvre la porte.",
+        text: "Première histoire\n\nÉlise ouvre la porte.",
+        qualityStatus: "native_good" as const,
+        qualityScore: 1,
+        blocks: [
+          {
+            id: "p1:b0",
+            text: "Première histoire",
+            bbox: [60, 80, 540, 110] as [number, number, number, number],
+            lines: [
+              {
+                id: "p1:b0:l0",
+                text: "Première histoire",
+                bbox: [60, 80, 540, 110] as [number, number, number, number],
+                sourceStartScalar: 0,
+                sourceEndScalar: 17,
+                spans: [
+                  {
+                    id: "p1:b0:l0:s0",
+                    text: "Première histoire",
+                    size: 20,
+                    font: "Book-Bold",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "p1:b1",
+            text: "Élise ouvre la porte.",
+            bbox: [60, 150, 540, 180] as [number, number, number, number],
+            lines: [
+              {
+                id: "p1:b1:l0",
+                text: "Élise ouvre la porte.",
+                bbox: [60, 150, 540, 180] as [number, number, number, number],
+                sourceStartScalar: 19,
+                sourceEndScalar: 40,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: 2,
+        width: 600,
+        height: 800,
+        rawText: "Deuxième histoire\n\nCamille mange une pomme.",
+        text: "Deuxième histoire\n\nCamille mange une pomme.",
+        qualityStatus: "native_good" as const,
+        qualityScore: 1,
+        blocks: [
+          {
+            id: "p2:b0",
+            text: "Deuxième histoire",
+            bbox: [60, 80, 540, 110] as [number, number, number, number],
+            lines: [
+              {
+                id: "p2:b0:l0",
+                text: "Deuxième histoire",
+                bbox: [60, 80, 540, 110] as [number, number, number, number],
+                sourceStartScalar: 0,
+                sourceEndScalar: 17,
+                spans: [
+                  {
+                    id: "p2:b0:l0:s0",
+                    text: "Deuxième histoire",
+                    size: 20,
+                    font: "Book-Bold",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "p2:b1",
+            text: "Camille mange une pomme.",
+            bbox: [60, 150, 540, 180] as [number, number, number, number],
+            lines: [
+              {
+                id: "p2:b1:l0",
+                text: "Camille mange une pomme.",
+                bbox: [60, 150, 540, 180] as [number, number, number, number],
+                sourceStartScalar: 19,
+                sourceEndScalar: 43,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const document = reconstructPdf({
+      pages,
+      outline: [
+        { level: 1, title: "Première histoire", pageNumber: 1 },
+        { level: 1, title: "Deuxième histoire", pageNumber: 2 },
+      ],
+      extractor: { name: "fixture", version: "1" },
+    });
+    const created = await service.createFileImport(
+      owner.userId,
+      "pdf",
+      document.chapters,
+      "pdf-canonical-import",
+      "pdf-canonical-request",
+      4_096,
+    );
+    const item = (created.body as { libraryItem: { id: string } }).libraryItem;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (
+        (await service.getLibraryItem(owner.userId, item.id)).processing
+          .overall === "ready"
+      )
+        break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const index = await service.getBookIndex(owner.userId, item.id);
+    expect(index.chapters.map((chapter) => chapter.title)).toEqual([
+      "Première histoire",
+      "Deuxième histoire",
+    ]);
+    const counts = await sql<{
+      sections: string;
+      paragraphs: string;
+      anchors: string;
+      occurrence_anchors: string;
+    }>`select
+      (select count(*) from sections s join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id})::text as sections,
+      (select count(*) from paragraphs p join sections s on s.id=p.section_id join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id})::text as paragraphs,
+      (select count(*) from content_source_anchors a where a.entity_type in ('section','paragraph','sentence'))::text as anchors,
+      (select count(*) from content_source_anchors a where a.entity_type='occurrence')::text as occurrence_anchors
+    `.execute(database);
+    expect(counts.rows[0]).toMatchObject({ sections: "2", paragraphs: "2" });
+    expect(Number(counts.rows[0]?.anchors)).toBeGreaterThanOrEqual(6);
+    expect(Number(counts.rows[0]?.occurrence_anchors)).toBeGreaterThan(0);
+
+    const importRow = await sql<{
+      import_id: string;
+    }>`select import_id from library_items where id=${item.id}`.execute(
+      database,
+    );
+    const retried = await sql<{
+      id: string;
+    }>`update jobs set status='queued', available_at='2020-01-01T00:00:00Z' where subject_id=${importRow.rows[0]!.import_id} and kind='prepare_text' returning id`.execute(
+      database,
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const state = await sql<{
+        status: string;
+      }>`select status from jobs where id=${retried.rows[0]!.id}`.execute(
+        database,
+      );
+      if (state.rows[0]?.status === "succeeded") break;
+      expect(await service.claimAndRunOne()).toBe(true);
+    }
+    const afterRetry = await sql<{
+      count: string;
+    }>`select count(*)::text as count from sections s join library_items l on l.source_revision_id=s.source_revision_id where l.id=${item.id}`.execute(
+      database,
+    );
+    expect(afterRetry.rows[0]?.count).toBe("2");
+    const duplicateAnalysisJobs = await sql<{
+      count: string;
+    }>`select count(*)::text as count from jobs where subject_id=${importRow.rows[0]!.import_id} and kind='analyze_language'`.execute(
+      database,
+    );
+    expect(duplicateAnalysisJobs.rows[0]?.count).toBe("1");
   });
 
   it("keeps Reader available after analyzer exhaustion and supports a targeted retry", async () => {

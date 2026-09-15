@@ -1,4 +1,4 @@
-.PHONY: help verify verify-docs format-check lint product-check typecheck test integration-test architecture-check migration-check security-check e2e
+.PHONY: help verify verify-docs format-check lint product-check typecheck test integration-test architecture-check migration-check security-check pdf-runtime-smoke e2e
 
 PYTHON ?= python3
 
@@ -52,6 +52,9 @@ migration-check:
 
 security-check:
 	@pnpm security:check
+
+pdf-runtime-smoke:
+	@$(PYTHON) scripts/smoke_pdf_runtime.py
 
 e2e:
 	@pnpm test:e2e

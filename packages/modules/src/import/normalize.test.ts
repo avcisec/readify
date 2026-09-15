@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_FILE_TEXT_SCALARS,
   MAX_TEXT_SCALARS,
   TextValidationError,
   normalizePastedText,
@@ -29,6 +30,19 @@ describe("pasted-text normalization v1", () => {
       TextValidationError,
     );
     expect(() => normalizePastedText("\ud800")).toThrow("ill_formed_unicode");
+  });
+
+  it("accepts the larger extracted-file text limit", () => {
+    expect(
+      normalizePastedText("a".repeat(50_001), MAX_FILE_TEXT_SCALARS)
+        .scalarCount,
+    ).toBe(50_001);
+    expect(() =>
+      normalizePastedText(
+        "a".repeat(MAX_FILE_TEXT_SCALARS + 1),
+        MAX_FILE_TEXT_SCALARS,
+      ),
+    ).toThrow(TextValidationError);
   });
 
   it("truncates the title at 80 scalar values", () => {

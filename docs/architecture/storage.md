@@ -12,6 +12,8 @@ Do not store large media blobs in PostgreSQL, use process-local memory as durabl
 
 Every artifact records logical type, immutable object key, byte size, checksum, MIME type, owner/sharing scope, source/input hashes, processor/model/config versions, creation/expiry, and lifecycle status. Signed URLs are short-lived and authorization is checked before issuance.
 
+In the current single-host adapter, private upload keys are account-scoped. Deleting a Library item permanently removes its source-owned database hierarchy in one transaction and queues an idempotent local-file purge; the purge first confirms that no live asset still references the key. A failed purge remains a diagnosable worker job and never restores access. Before production object storage is enabled, define the provider's recovery window, orphan scan, retention policy, and audited administrative recovery path; do not copy the local immediate-purge policy into production by assumption.
+
 Public/licensed source artifacts may eventually use a canonical global key. Private source inputs—including pasted text and uploaded files—deduplicate within an account by default; a cross-account hash hit must never reveal another user's content. Cache sharing and retention require explicit policy approval.
 
 ## Migration rules

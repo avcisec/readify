@@ -9,10 +9,14 @@ export class ApiProblem extends Error {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(path, {
     ...init,
     headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.body && !isFormData
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...init?.headers,
     },
   });
@@ -46,6 +50,14 @@ export function turkishProblem(code: string): string {
     reader_not_ready: "Metin henüz hazırlanıyor.",
     stale_state_change:
       "Bu değişiklikten sonra başka bir işlem yapıldığı için geri alınamıyor.",
+    file_required: "Lütfen bir dosya seçin.",
+    file_too_large: "Dosya 200 MB sınırını aşıyor.",
+    unsupported_file_type: "Yalnızca PDF veya EPUB dosyası seçebilirsiniz.",
+    file_drm_unsupported: "DRM korumalı EPUB dosyaları desteklenmiyor.",
+    file_no_extractable_text:
+      "Bu dosyada okunabilir metin bulunamadı. Taranmış PDF desteklenmiyor.",
+    file_parse_failed:
+      "Dosya okunamadı. Dosyanın bozuk veya desteklenmeyen bir EPUB/PDF olmadığını kontrol edin.",
   };
   return messages[code] ?? "İşlem tamamlanamadı. Lütfen yeniden deneyin.";
 }

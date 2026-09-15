@@ -16,6 +16,8 @@ received → validating → [extracting for file/remote sources] → normalizing
 
 Stages are a dependency graph, not one opaque job. Optional enrichment can complete later or fail without discarding valid prior artifacts. A user-facing import status is derived from stage records, not a worker's in-memory state.
 
+Source-byte deletion is also a durable idempotent job. It is not an import stage and therefore cannot mutate a deleted or unrelated import workflow when retries are exhausted.
+
 ## Job contract
 
 Every job records:
@@ -27,6 +29,8 @@ Every job records:
 - result artifact references or a classified internal error plus safe user message.
 
 Workers checkpoint between bounded units (page, section, audio chunk). A lease and heartbeat allow another worker to recover abandoned work after restart. Completion uses compare-and-set/idempotency protection so redelivery is safe.
+
+For PDF imports, extracted pages are durable idempotent checkpoints. Recovery reuses successful native/OCR pages, retries failed pages, then reruns deterministic whole-book reconstruction; semantic uniqueness and revision-stable IDs prevent duplicate chapters or anchors. Details are owned by the [PDF import contract](pdf-import-contract.md).
 
 ## Retry and failure policy
 

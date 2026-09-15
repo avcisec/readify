@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppNav } from "../../../components/app-nav";
+import { DeleteLibraryItem } from "../../../components/delete-library-item";
 import { ApiProblem, api, turkishProblem } from "../../../lib/api";
 
 type Book = {
   id: string;
   title: string;
+  sourceType: "pasted_text" | "pdf" | "epub";
   readerAvailable: boolean;
   hasSavedPosition: boolean;
   chapters: Array<{
@@ -67,7 +69,11 @@ export default function BookIndexPage() {
             <span className="book-rule" />
           </div>
           <div>
-            <p className="eyebrow">Yapıştırılan metin</p>
+            <p className="eyebrow">
+              {book.sourceType === "pasted_text"
+                ? "Yapıştırılan metin"
+                : book.sourceType.toUpperCase()}
+            </p>
             <h1>{book.title}</h1>
             <p className="page-intro">
               {book.chapters.length} bölüm · Okuma konumun otomatik saklanır.
@@ -77,6 +83,11 @@ export default function BookIndexPage() {
                 Kaldığın yerden devam et <span aria-hidden="true">→</span>
               </Link>
             ) : null}
+            <DeleteLibraryItem
+              itemId={book.id}
+              title={book.title}
+              onDeleted={() => router.replace("/library")}
+            />
           </div>
         </header>
         <section className="chapter-list" aria-labelledby="chapter-list-title">

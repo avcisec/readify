@@ -12,18 +12,24 @@
     "migrate:down": "tsx src/database/migrate-cli.ts down",
     "migrate:initial": "tsx src/database/migrate-cli.ts initial",
     "migrate:reset": "tsx src/database/migrate-cli.ts reset",
+    "quality:pdf": "tsx src/pdf-quality-cli.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@readify/contracts": "workspace:*",
     "@readify/modules": "workspace:*",
+    "epub": "2.1.1",
     "franc-min": "6.2.0",
     "kysely": "0.29.5",
+    "pdf-parse": "2.4.5",
+    "pdfjs-dist": "5.4.296",
     "pg": "8.23.0",
     "pino": "10.3.1",
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@types/epub": "0.2.0",
+    "@types/pdf-parse": "1.1.4",
     "@types/pg": "8.23.1",
     "tsx": "4.23.13"
   }

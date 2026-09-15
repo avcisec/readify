@@ -8,6 +8,7 @@ Observability is part of each feature's acceptance, not a later dashboard projec
 - Centralized application error reporting with release/environment, safe context, grouping, ownership, and alert routing.
 - Metrics for request latency/error/saturation, database availability/connections/query latency, queue depth/oldest age/retries/dead letters, and worker heartbeat/utilization.
 - Import metrics by source/stage: duration, success/failure reason, retry, partial readiness, failed import/alignment counts.
+- Source deletion backlog and failed local/object-storage purges, without logging private object keys.
 - AI/media metrics by provider/model/config: latency, timeout/error, input/output usage, estimated cost, GPU seconds, audio minutes/pages/characters, quality/fallback result, and cache hit.
 - Trace/correlation propagation from browser request through API, durable handoff, job attempts, provider calls, and artifact writes.
 
@@ -32,3 +33,5 @@ Provider choice is intentionally open. Instrument through standard structured lo
 Web and worker expose separate liveness/readiness routes; readiness checks PostgreSQL. Every HTTP response carries a bounded `X-Request-Id`, accepted imports persist that correlation ID with the first job, and downstream jobs retain it. The worker emits structured JSON attempt start/completion events with stage, attempt, duration, and classified outcome. Logger redaction tests cover pasted text, email, proof/token, meaning, cookie, authorization, and response-body fields.
 
 The durable `jobs` table makes queue state, attempts, leases, heartbeats, retry schedule, and classified terminal failures inspectable without process memory. Import workflow rows retain public-safe stage/capability/error reference state. Central export, dashboards, alert routing, SLOs, and incident ownership remain production rollout gates; raw content and credentials must not be added while wiring them.
+
+PDF diagnosis additionally uses `source_pages.quality_status/warnings` and `source_revisions.import_quality_report`: OCR/failed page numbers, excluded boilerplate counts, chapter confidence, and processor/config versions. These values are bounded diagnostic codes and counts, never extracted text labels.

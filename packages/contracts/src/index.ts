@@ -25,7 +25,12 @@ export interface ProblemDetails {
 
 export interface ProcessingStatus {
   overall: "processing" | "ready" | "ready_degraded" | "failed";
-  stage: "queued" | "preparing_text" | "analyzing_language" | "complete";
+  stage:
+    | "queued"
+    | "extracting"
+    | "preparing_text"
+    | "analyzing_language"
+    | "complete";
   capabilities: { text: ProcessingCapability; wordTools: ProcessingCapability };
   progress: null;
   retryableCapabilities: string[];

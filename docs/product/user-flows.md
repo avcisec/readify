@@ -48,10 +48,10 @@ Authentication mechanism and launch interface language remain open. Onboarding a
 
 ```text
 Library → Import screen
-→ choose Paste text, YouTube (when enabled), EPUB, PDF, or Markdown
+→ choose Text, PDF, or EPUB
 → paste/edit plain text, provide URL, or choose a file as appropriate
 → immediate source-specific validation
-→ confirm expected learning language; correct a high-confidence mismatch if detected
+→ validate expected learning language; high-confidence mismatch is rejected
 → submit private import
 → Library item appears immediately with stage/progress
 → leave page or continue using app while work continues
@@ -62,6 +62,8 @@ Library → Import screen
 ```
 
 For `Paste text`, the primary control is a large multiline field with a visible character counter. Clipboard formatting is discarded while paragraph breaks remain. Empty/whitespace-only or over-limit text is blocked inline before submission.
+
+For PDF, physical pages remain provenance while outline, heading typography and text continuity produce semantic chapters and paragraphs. Short-story collections expose each reliably detected story as a chapter; uncertain books remain readable as one low-confidence chapter. Pages without usable native text use selective CPU OCR when its language pack is installed, while isolated page failures remain diagnosable. EPUB continues to use its reading spine. DRM-protected EPUBs remain rejected. Audiobook attachment and synchronized playback remain deferred.
 
 User-visible alternatives:
 

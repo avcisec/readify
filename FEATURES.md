@@ -84,13 +84,13 @@
 | Markdown structure koruma | Core | Belge anlamlı bloklara ayrılır | Heading/list/quote/paragraph |
 | PDF native extraction | Core | OCR maliyetini önler | Her sayfa için text-quality kontrolü |
 | Scanned-page tespiti | Core | Yalnız gerektiğinde OCR | Text density/glyph/coverage sinyalleri |
-| Selective OCR | Core | Taranmış sayfayı okunabilir yapar | Fransızca OCR modeli |
+| Selective OCR | Core | Taranmış sayfayı okunabilir yapar | Kitabın diline göre seçilen OCR modeli |
 | Page anchor | Core | Kaynak sayfaya geri döner | PDF page number ve bounding reference |
 | Paragraph segmentation | Core | Reader ve TTS blokları oluşur | Kaynak sınırları korunur |
 | Sentence segmentation | Core | Sentence View ve alignment oluşur | Stable sentence ID |
 | Header/footer temizleme | Core | Tekrarlı gürültüyü azaltır | Sayfalar arası tekrar analizi |
 | Text quality score | Core | Fallback kararını açıklar | Extraction/OCR confidence |
-| Hyphenation repair | Plus | Satır sonu bölünmüş kelimeleri düzeltir | Original text mapping korunur |
+| Hyphenation repair | Core | Satır sonu bölünmüş kelimeleri düzeltir | Original text mapping korunur |
 | Footnote ayrımı | Plus | Ana okumayı sadeleştirir | Açılır secondary block |
 | Table ayrımı | Plus | Bozuk düz metni azaltır | Table block olarak saklar |
 | OCR/transcript editor | Plus | Hatalı metni düzeltir | Yalnız değişen sentence yeniden işlenir |
